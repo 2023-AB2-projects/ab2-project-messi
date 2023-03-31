@@ -1,6 +1,6 @@
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import javax.swing.*;
 
 public class ClientGUISelect extends JFrame implements ActionListener {
     private JTextField tableNameTextField;

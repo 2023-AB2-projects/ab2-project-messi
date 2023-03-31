@@ -1,5 +1,10 @@
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class MyServer {
     ObjectInputStream objectInputStream;
@@ -7,6 +12,8 @@ public class MyServer {
     private Socket socket;
     private ServerSocket serverSocket;
     private Boolean run;
+    private Database database;
+    private Database.Table tables;
 
     public MyServer() {
         startConnection();
@@ -24,33 +31,66 @@ public class MyServer {
     }
 
     public void handleMessage() throws IOException, ClassNotFoundException {
-        String[] message = ((String) objectInputStream.readObject()).split("/");
+        String query = ((String) objectInputStream.readObject())
+                .replaceAll("\\(", "")
+                .replaceAll("\\)", "")
+                .replaceAll(";", "")
+                .replaceAll("\n", " ")
+                .replaceAll(" +", " ");
+
+        String[] message = query.split(" ");
+
         for (String i : message) {
             System.out.println(i + " ");
         }
         switch (message[0]) {
             //create database:
-            case "1":
+            case "CREATE":
+                switch (message[1]) {
+                    case "DATABASE":
+                        database = new Database(message[2]);
+                        break;
+                    case "TABLE":
+                        tables = database.new Table(database, message[2]);
+                        int i = 3;
+                        while (i < message.length) {
+                            if (Objects.equals(message[i], "true")) {    //Current column is Primary Key for the table
+                                System.out.println("PRIMARY KEY: " + message[i] + "     " + message[i + 1]);
+                                i++;
+                                Database.Table.PrimaryKey primaryKey = tables.new PrimaryKey(tables, message[i], message[i + 1]);
+                            } else {
+                                i++;
+                            }
 
-                break;
-            //drop database:
-            case "2":
-                break;
-            //create table:
-            case "3":
+                            Database.Table.Attribute attribute = tables.new Attribute(tables, message[i], message[i + 1]);
+                            System.out.println(message[i] + "     " + message[i + 1]);
+                            i += 2;
+                        }
 
-                break;
-            //drop table:
-            case "4":
-                break;
-            //create index:
-            case "5":
-                break;
-            // ...
-            case "6":
-                break;
+                        JSONObject jsonObject = database.toJsonObject();
+                        FileWriter file = new FileWriter("output.json");
+                        file.write(jsonObject.toJSONString());
+                        file.close();
+                        break;
+                    case "INDEX":
+                        break;
+                    default:
+                        System.out.println("ERROR at reading Client's message!");
+                        break;
+                }
+            case "DROP":
+                switch (message[1]) {
+                    case "DATABASE":
+                        break;
+                    case "TABLE":
+                        break;
+                    default:
+                        System.out.println("ERROR at reading Client's message!");
+                        break;
+                }
+
             default:
-                System.out.println("ERROR message content");
+                System.out.println("ERROR at reading Client's message!");
                 break;
         }
     }

@@ -1,0 +1,6 @@
+{"Database":"databaseName","Tables":[
+                                  {"Table":"Table1",
+                                      "Attributes":[{"attrName":"Col1","attrType":"INT,"},{"attrName":"Col2","attrType":"STRING,"},{"attrName":"Col3","attrType":"STRING"}],
+                                      "PrimaryKeys":[{"pkName":"Col1","pkType":"INT,"}],
+                                      "UniqueKeys":[],
+                                      "ForeignKeys":[]}]}

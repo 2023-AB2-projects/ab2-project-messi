@@ -22,7 +22,6 @@ public class ClientInterface extends JFrame implements ActionListener {
     private JButton createTableButton;
     private JButton dropTableButton;
     private JButton createIndexButton;
-    private JButton selectButton;
     private static JPanel cardPanel;
     private static CardLayout layout;
 
@@ -132,7 +131,7 @@ public class ClientInterface extends JFrame implements ActionListener {
     }
 
     public void showMenu() {
-        layout.show(cardPanel, "createIndex");
+        layout.show(cardPanel, "menu");
     }
 
     public static void main(String[] args) {

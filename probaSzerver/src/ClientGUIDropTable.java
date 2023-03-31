@@ -41,7 +41,7 @@ public class ClientGUIDropTable extends JPanel implements ActionListener {
             query = "DROP TABLE " + textField.getText() + ";\n";
             message = "4" + "/" + textField.getText();
             JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
-            clientInterface.writeIntoSocket(message);
+            clientInterface.writeIntoSocket(query);
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
         }

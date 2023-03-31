@@ -54,7 +54,7 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
             query = "CREATE INDEX " + indexName.getText() + "\nON " + indexOn.getText() + ";\n";
             message = "5" + "/" + indexName.getText();
             JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
-            clientInterface.writeIntoSocket(message);
+            clientInterface.writeIntoSocket(query);
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
         }
