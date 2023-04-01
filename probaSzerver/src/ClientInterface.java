@@ -28,7 +28,7 @@ public class ClientInterface extends JFrame implements ActionListener {
     public ClientInterface() {
         startConnection();
         this.setTitle("Messi's database");
-        this.setSize(500, 500);
+        this.setSize(500, 800);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         layout = new CardLayout();

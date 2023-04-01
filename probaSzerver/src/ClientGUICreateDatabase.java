@@ -42,6 +42,7 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
             JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
             clientInterface.writeIntoSocket(query);
         } else if (e.getSource() == backButton) {
+            textField.setText("");
             clientInterface.showMenu();
         }
     }
