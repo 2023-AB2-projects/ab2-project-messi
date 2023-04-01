@@ -31,16 +31,13 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private JTextArea queryAreaMessage;
     private JScrollPane scrollPane;
     private String query;
-    private String message;
     private Boolean isPrimaryKey;
     private Boolean isForeignKey;
 
 
     public ClientGUICreateTable(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
-//        this.startConnection();
-
-        message = "";
+        // this.startConnection();
 
         tableNameLabel = new JLabel("Table Name:");
         columnNameLabel = new JLabel("Column Name:");
@@ -109,7 +106,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
 
         JPanel queryPanel = new JPanel(new BorderLayout());
-        queryPanel.add(new JLabel("SQL Query:"), BorderLayout.NORTH);
+        queryPanel.add(new JLabel("Columns:"), BorderLayout.NORTH);
         queryPanel.add(scrollPane, BorderLayout.CENTER);
 
 
@@ -120,40 +117,43 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         this.add(queryPanel, BorderLayout.SOUTH);
 
         this.setVisible(true);
-//        setContentPane(mainPanel);
+        // setContentPane(mainPanel);
     }
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == addColumnButton) {
             String columnName = columnNameField.getText();
             String columnType = columnTypeField.getText().toUpperCase();
-            String isPrimaryKeyString = String.valueOf(pkCheckBox.isSelected());
-            String isForeignKeyString = String.valueOf(fkCheckBox.isSelected());
-            String foreignKeyData = "";
-            if (fkCheckBox.isSelected()) {
-                foreignKeyData = fkToTabelField.getText() + " " + fkToColumnField.getText() + " ";
+
+            // if there were columns added before, a "," needs to be added to the end of the line
+            if (!queryAreaMessage.getText().equals("")) {
+                queryAreaMessage.append(",\n");
             }
 
             if (pkCheckBox.isSelected() && isPrimaryKey) {
                 JOptionPane.showMessageDialog(this, "There's already a primary key to this table.");
             } else if (columnName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter a column name.");
-
             } else if (columnType.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter a column type.");
             } else {
-                if(pkCheckBox.isSelected()) {
+                if (pkCheckBox.isSelected()) {
                     isPrimaryKey = true;
+                    queryAreaMessage.append(columnName + " " + columnType + " PRIMARY KEY");
                 }
-                if (queryAreaMessage.getText().equals("")) {
-                    queryAreaMessage.append(columnName + " " + columnType + " " + isPrimaryKeyString + " " + isForeignKeyString + " " + foreignKeyData);
-                } else {
-                    queryAreaMessage.append(",\n" + columnName + " " + columnType + " " + isPrimaryKeyString + " " + isForeignKeyString + " " + foreignKeyData);
+                if (fkCheckBox.isSelected()) {
+                    queryAreaMessage.append(columnName + " " + columnType + " FOREIGN KEY REFERENCES " + fkToTabelField.getText() + "(" + fkToColumnField.getText() + ")");
                 }
-                message += columnName + " " + columnType + "/";
+                if (!pkCheckBox.isSelected() && !fkCheckBox.isSelected()) {
+                    queryAreaMessage.append(columnName + " " + columnType);
+                }
+                pkCheckBox.setSelected(false);
+                fkCheckBox.setSelected(false);
+                fkToTabelField.setText("");
+                fkToColumnField.setText("");
+                fkPanel.setVisible(false);
                 columnNameField.setText("");
                 columnTypeField.setText("");
-                pkCheckBox.setSelected(false);
             }
         } else if (e.getSource() == createTableButton) {
             String tableName = tableNameField.getText();
@@ -168,7 +168,6 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                     JOptionPane.showMessageDialog(this, "Declare a primary key to the " + tableName + " table.");
                 } else {
                     query = "CREATE TABLE " + tableName + " (\n" + queryAreaMessage.getText() + "\n);";
-                    message = "3" + "/" + tableName + "/" + message;
                     JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                     clientInterface.writeIntoSocket(query);
 

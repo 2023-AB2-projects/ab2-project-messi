@@ -27,7 +27,7 @@ public class ClientInterface extends JFrame implements ActionListener {
 
     public ClientInterface() {
         startConnection();
-        this.setTitle("Messi's database");
+        this.setTitle("Root's database");
         this.setSize(500, 800);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -58,7 +58,6 @@ public class ClientInterface extends JFrame implements ActionListener {
         menu.add(createTableButton);
         menu.add(dropTableButton);
         menu.add(createIndexButton);
-        System.out.println("menu5");
 
 
         //panels:
@@ -81,7 +80,6 @@ public class ClientInterface extends JFrame implements ActionListener {
         layout.show(cardPanel, "menu");
         this.add(cardPanel);
         this.setVisible(true);
-        System.out.println("menu");
     }
 
     public void actionPerformed(ActionEvent e) {

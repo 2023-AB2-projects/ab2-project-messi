@@ -4,7 +4,7 @@ import org.json.simple.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Messi {
+public class Root {
     private List<Database> databases;
     public class Database {
         private List<Table> tables;
@@ -154,10 +154,10 @@ public class Messi {
             }
         }
 
-        public Database(Messi messi, String databaseName) {
+        public Database(Root root, String databaseName) {
             this.databaseName = databaseName;
             tables = new ArrayList<>();
-            messi.databases.add(this);
+            root.databases.add(this);
         }
 
         public JSONObject toJsonObject() {
@@ -174,7 +174,7 @@ public class Messi {
         }
     }
 
-    public Messi() {
+    public Root() {
         databases = new ArrayList<>();
     }
 

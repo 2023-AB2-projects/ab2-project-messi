@@ -1,30 +1,28 @@
 import org.json.simple.JSONObject;
 
-import javax.swing.*;
 import java.io.*;
 import java.net.*;
-import java.util.Objects;
 
 public class MyServer {
     ObjectInputStream objectInputStream;
     ObjectOutputStream objectOutputStream;
-    String fileName = "data.json";
+    String fileName = "./data.json";
     private Socket socket;
     private ServerSocket serverSocket;
     private Boolean run;
-    private Messi databases;
-    private Messi.Database database;
-    private Messi.Database.Table table;
-    private Messi.Database.Table.Attribute attribute;
-    private Messi.Database.Table.PrimaryKey primaryKey;
-    private Messi.Database.Table.ForeignKey foreignKey;
-    private Messi.Database.Table.UniqueKey uniqueKey;
-    private Messi.Database.Table.ForeignKey.Reference reference;
+    private Root databases;
+    private Root.Database database;
+    private Root.Database.Table table;
+    private Root.Database.Table.Attribute attribute;
+    private Root.Database.Table.PrimaryKey primaryKey;
+    private Root.Database.Table.ForeignKey foreignKey;
+    private Root.Database.Table.UniqueKey uniqueKey;
+    private Root.Database.Table.ForeignKey.Reference reference;
 
 
     public MyServer() {
         startConnection();
-        databases = new Messi();
+        databases = new Root();
         while (run) {
             try {
                 handleMessage();
@@ -40,8 +38,9 @@ public class MyServer {
 
     public void handleMessage() throws IOException, ClassNotFoundException {
         String query = ((String) objectInputStream.readObject())
-                .replaceAll("\\(", "")
-                .replaceAll("\\)", "")
+                .replaceFirst("\\(", "")
+                .replaceAll("\\(", " ")
+                .replaceAll("\\)", " ")
                 .replaceAll(";", "")
                 .replaceAll(",", "")
                 .replaceAll("\n", " ")
@@ -66,20 +65,24 @@ public class MyServer {
                         while (i < message.length) {
                             String columnName = message[i++];
                             String columnType = message[i++];
-                            System.out.println(columnName + "       " + columnType);
-                            if (Objects.equals(message[i], "true")) {    //Current column is the Primary Key for the table
-                                primaryKey = table.new PrimaryKey(table, columnName, columnType);
+                            //System.out.println(columnName + "       " + columnType);
+                            switch (message[i]) {
+                                case "FOREIGN": // Current column is Foreign Key
+                                    i += 2;     // "KEY", "REFERENCES"
+                                    String fkToTableName = message[i++];    // table
+                                    String fkToColumnName = message[i++];   // column
+                                    foreignKey = table.new ForeignKey(table, columnName);
+                                    reference = foreignKey.new Reference(foreignKey, fkToTableName, fkToColumnName);
+                                    break;
+                                case "PRIMARY": // Current column is the Primary Key for the table
+                                    i += 1;     // KEY
+                                    primaryKey = table.new PrimaryKey(table, columnName, columnType);
+                                    break;
+                                default:
+                                    break;
                             }
+
                             i += 1;
-                            if (Objects.equals(message[i], "true")) {    //Current column is Foreign Key
-                                i += 1;
-                                String fkToTableName = message[i++];
-                                String fkToColumnName = message[i++];
-                                foreignKey = table.new ForeignKey(table, columnName);
-                                reference = foreignKey.new Reference(foreignKey, fkToTableName, fkToColumnName);
-                            } else {
-                                i += 1;
-                            }
                             attribute = table.new Attribute(table, columnName, columnType);
                         }
                         break;
@@ -139,9 +142,8 @@ public class MyServer {
     //Saves a JSONObjoect to a file
     public void saveToFile(JSONObject jsonObject, String fileName) {
         try {
-            FileWriter file = null;
-            file = new FileWriter(fileName);
-            file.write(jsonObject.toJSONString());
+            FileWriter file = new FileWriter(fileName);
+            file.append(jsonObject.toJSONString());
             file.close();
         } catch (IOException e) {
             System.out.println("ERROR at writing to " + fileName + " file!");
