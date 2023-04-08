@@ -11,14 +11,13 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
     JTextField textField;
     JButton submitButton;
     JButton backButton;
-    String message;
     String query;
 
     public ClientGUICreateDatabase(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
-        setLayout(new GridLayout(2, 2));
+        this.setLayout(new GridLayout(2, 2));
 
-        jlabel = new JLabel("Database name: ");
+        jlabel = new JLabel("Database Name: ");
         textField = new JTextField();
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
@@ -26,19 +25,23 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
 
-        add(jlabel);
-        add(textField);
-        add(backButton);
-        add(submitButton);
-        setVisible(true);
+        this.add(jlabel);
+        this.add(textField);
+        this.add(backButton);
+        this.add(submitButton);
+        this.setVisible(true);
     }
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == submitButton) {
-            query = "CREATE DATABASE " + textField.getText() + ";\n";
-            message = "1" + "/" + textField.getText();
-            JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
-            clientInterface.writeIntoSocket(query);
+            String databaseName = textField.getText();
+            if (databaseName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "To create a database, ENTER a name.");
+            } else {
+                query = "CREATE DATABASE " + databaseName + ";\n";
+                JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
+                clientInterface.writeIntoSocket(query);
+            }
         } else if (e.getSource() == backButton) {
             textField.setText("");
             clientInterface.showMenu();

@@ -2,6 +2,7 @@ package edu.ubbcluj.ab2.minidb;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Arrays;
 import javax.swing.*;
 
 public class ClientGUICreateTable extends JPanel implements ActionListener {
@@ -15,7 +16,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private JLabel fkLable;
     private JLabel fkToTableLabel;
     private JLabel fkToColumnLabel;
-    private JComboBox<String> dataBaseName;
+    private JComboBox<String> jComboBox;
     private JTextField tableNameField;
     private JTextField columnNameField;
     private JTextField columnTypeField;
@@ -33,6 +34,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private String query;
     private Boolean isPrimaryKey;
     private Boolean isForeignKey;
+    private String[] stringOfDatabases;
 
 
     public ClientGUICreateTable(ClientInterface clientInterface) {
@@ -45,7 +47,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         fkToTableLabel = new JLabel("Table Name:");
         fkToColumnLabel = new JLabel("Column Name:");
 
-        dataBaseName = new JComboBox<>(getDatabases());
+        jComboBox = new JComboBox<>();
         tableNameField = new JTextField(20);
         columnNameField = new JTextField(20);
         columnTypeField = new JTextField(20);
@@ -78,7 +80,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
         inputPanel = new JPanel(new GridLayout(7, 2, 5, 5));
         inputPanel.add(databaseNameLabel);
-        inputPanel.add(dataBaseName);
+        inputPanel.add(jComboBox);
         inputPanel.add(tableNameLabel);
         inputPanel.add(tableNameField);
         inputPanel.add(columnNameLabel);
@@ -169,7 +171,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                 if (!isPrimaryKey) {
                     JOptionPane.showMessageDialog(this, "Declare a primary key to the " + tableName + " table.");
                 } else {
-                    query = "CREATE TABLE " + tableName + " (\n" + queryAreaMessage.getText() + "\n);";
+                    query = "CREATE TABLE " + jComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + "\n);";
                     JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                     clientInterface.writeIntoSocket(query);
 
@@ -199,9 +201,12 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         }
     }
 
-    public String[] getDatabases() {
-        clientInterface.writeIntoSocket("GETDATABASES");
-        String message = clientInterface.receiveMessageFromServer();
-        return message.split("\n");
+    public void updateDatabaseComboBox() {
+        jComboBox.removeAllItems();
+        String[] elements = clientInterface.getDatabasesNames().split(" ");
+        Arrays.sort(elements);
+        for (String element : elements) {
+            jComboBox.addItem(element);
+        }
     }
 }

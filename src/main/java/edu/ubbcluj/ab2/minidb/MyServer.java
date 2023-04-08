@@ -1,23 +1,30 @@
 package edu.ubbcluj.ab2.minidb;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+
 
 // TODO: ha leallitjuk a klienst akkor a server tovabb fusson es varja az uzeneteket
 
 
 import java.io.*;
 import java.net.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class MyServer {
     ObjectInputStream objectInputStream;
     ObjectOutputStream objectOutputStream;
     String fileName = "data.json";
+    CatalogHandler catalogHandler;
     private Socket socket;
     private ServerSocket serverSocket;
     private Boolean run;
@@ -31,81 +38,85 @@ public class MyServer {
     private Root.Database.Table.ForeignKey foreignKey;
     private Root.Database.Table.UniqueKey uniqueKey;
     private Root.Database.Table.ForeignKey.Reference reference;
+    private String databaseName;
+    private String tableName;
+    private String attrName;
+    private String attrType;
+
+//    private Logger logger;
 
 
     public MyServer() {
+//        logger = LoggerFactory.getLogger(MyServer.class);
         startConnection();
-        //System.out.println("\n-----\n-----\n-----\n-----\n-----\n-----\n-----\n-----\n-----\n-----\n-----\n-----");
 
-        /*objectMapper = new ObjectMapper();
-        try {
-            jsonNode = objectMapper.readTree("{\"Databases\":[{\"Database\":\"alma\",\"Tables\":[]}]}");
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }*/
-
-        /*try {
-            objectMapper = new ObjectMapper();
-            URL resource = getClass().getClassLoader().getResource("data.json");
-            File file = new File(resource.toURI());
-            String json = String.valueOf(Files.readAllBytes(Paths.get(file.toURI())));
-            // InputStream is = getClass().getClassLoader().getResourceAsStream("data.json");
-            jsonNode = objectMapper.readTree("{\"Databases\":[{\"Database\":\"alma\",\"Tables\":[]}]}");
-        } catch (IOException | URISyntaxException e) {
-            throw new RuntimeException(e);
-        }*/
+        catalogHandler = isFileEmpty(fileName) ? new CatalogHandler() : new CatalogHandler(fileName);
 
         while (run) {
             handleMessage();
         }
     }
 
-    public void handleMessage(){
+    public static void main(String[] args) {
+        new MyServer();
+    }
+
+    public void handleMessage() {
         String query = null;
         try {
-            query = ((String) objectInputStream.readObject()).replaceFirst("\\(", "").replaceAll("\\(", " ").replaceAll("\\)", " ").replaceAll(";", "").replaceAll(",", "").replaceAll("\n", " ").replaceAll(" +", " ");
+            query = ((String) objectInputStream.readObject())
+                    .replaceFirst("\\(", "")
+                    .replaceAll("\\(", " ")
+                    .replaceAll("\\)", " ")
+                    .replaceAll(";", "")
+                    .replaceAll(",", "")
+                    .replaceAll("\n", " ")
+                    .replaceAll(" +", " ");
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Can't read object from socket!");
+            System.out.println("ERROR at reading object from socket!");
+            endConnection();
         }
 
+        assert query != null;
         String[] message = query.split(" ");
 
+        System.out.print("\nmessage: ");
         for (String i : message) {
-            System.out.println(i + " ");
+            System.out.print(i + " ");
         }
         switch (message[0]) {
             // create database:
             case "CREATE":
                 switch (message[1]) {
                     case "DATABASE":
-                        String databaseName = message[2];
-                        Root.Database database = root.new Database(root, databaseName);
+                        databaseName = message[2];
+                        catalogHandler.createDatabase(databaseName);
                         break;
                     case "TABLE":
-                        //Root.Database.Table table = database.new Table(database, message[2]);
+                        databaseName = message[2].split("\\.")[0];
+                        tableName = message[2].split("\\.")[1];
+                        catalogHandler.createTable(databaseName, tableName);
                         int i = 3;
                         while (i < message.length) {
-                            String columnName = message[i++];
-                            String columnType = message[i++];
-                            //System.out.println(columnName + "       " + columnType);
-                            switch (message[i]) {
-                                case "FOREIGN": // Current column is Foreign Key
-                                    i += 2;     // "KEY", "REFERENCES"
-                                    String fkToTableName = message[i++];    // table
-                                    String fkToColumnName = message[i++];   // column
-                                    Root.Database.Table.ForeignKey foreignKey = table.new ForeignKey(table, columnName);
-                                    foreignKey.new Reference(foreignKey, fkToTableName, fkToColumnName);
-                                    break;
-                                case "PRIMARY": // Current column is the Primary Key for the table
-                                    i += 1;     // KEY
-                                    Root.Database.Table.PrimaryKey primaryKey = table.new PrimaryKey(table, columnName, columnType);
-                                    break;
-                                default:
-                                    break;
+                            attrName = message[i++];
+                            attrType = message[i++];
+                            if (i >= message.length) {
+                                break;
                             }
-
-                            i += 1;
-                            Root.Database.Table.Attribute attribute = table.new Attribute(table, columnName, columnType);
+                            switch (message[i]) {
+                                case "FOREIGN" -> { // Current column is Foreign Key
+                                    i += 3;     // "KEY", "REFERENCES"
+                                    String refTableName = message[i++];
+                                    String refAttrName = message[i++];
+                                    catalogHandler.createForeignKey(databaseName, tableName, attrName);
+                                    catalogHandler.createReference(databaseName, tableName, attrName, refTableName, refAttrName);
+                                }
+                                case "PRIMARY" -> { // Current column is the Primary Key for the table
+                                    i += 2;     // KEY
+                                    catalogHandler.createPrimaryKey(databaseName, tableName, attrName, attrType);
+                                }
+                            }
+                            catalogHandler.createAttribute(databaseName, tableName, attrName, attrType);
                         }
                         break;
                     case "INDEX":
@@ -114,31 +125,39 @@ public class MyServer {
                         System.out.println("ERROR at reading Client's message!");
                         break;
                 }
-                saveToFile(root.toJsonObject(), fileName);
                 break;
             case "DROP":
                 switch (message[1]) {
-                    case "DATABASE":
+                    case "DATABASE" -> {
+                        databaseName = message[2];
+                        catalogHandler.deleteDatabase(databaseName);
+                    }
+                    case "TABLE" -> {
+                        String[] string = message[2].split("\\.");
+                        databaseName = string[0];
+                        tableName = string[1];
+                        catalogHandler.deleteTable(databaseName, tableName);
+                    }
 
-                        break;
-                    case "TABLE":
-                        break;
-                    default:
-                        System.out.println("ERROR at reading Client's message!");
-                        break;
+                    //TODO: (OPTIONAL) delete attributes, pks, fks
+                    default -> System.out.println("ERROR at reading Client's message!");
                 }
                 break;
             // if the client requests the name of the existent databases in the JSON file
             case "GETDATABASES":
-                /*JsonNode databases = jsonNode.get("Database");
-                databases.forEach(db -> {
-                    System.out.println(db.get("Database"));
-                });*/
+                writeIntoSocket(catalogHandler.getStringOfDatabases());
+                System.out.println(catalogHandler.getStringOfDatabases());
+                break;
+            case "GETTABLES":
+                databaseName = message[1];
+                writeIntoSocket(catalogHandler.getStringOfTables(databaseName));
+                System.out.println(catalogHandler.getStringOfTables(databaseName));
                 break;
             default:
                 System.out.println("ERROR at reading Client's message!");
                 break;
         }
+        catalogHandler.saveCatalogToFile(fileName);
     }
 
     private void startConnection() {
@@ -168,6 +187,15 @@ public class MyServer {
         }
     }
 
+    public void writeIntoSocket(String message) {
+        try {
+            objectOutputStream.writeObject(message);
+        } catch (IOException e) {
+            System.out.println("ERROR at writing object to socket!");
+            endConnection();
+        }
+    }
+
     //Saves a JSONObjoect to a file
     public void saveToFile(JSONObject jsonObject, String fileName) {
         try {
@@ -180,8 +208,8 @@ public class MyServer {
         }
     }
 
-    public static void main(String[] args) {
-        System.out.println("aa");
-        new MyServer();
+    public boolean isFileEmpty(String filePath) {
+        File file = new File(filePath);
+        return (file.length() == 0);
     }
 }

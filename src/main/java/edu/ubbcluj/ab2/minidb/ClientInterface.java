@@ -5,9 +5,11 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 
 public class ClientInterface extends JFrame implements ActionListener {
 
@@ -36,7 +38,6 @@ public class ClientInterface extends JFrame implements ActionListener {
         layout = new CardLayout();
         cardPanel = new JPanel();
         cardPanel.setLayout(layout);
-
 
         //creating the buttons
         createDatabaseButton = new JButton("Create Database");
@@ -88,10 +89,13 @@ public class ClientInterface extends JFrame implements ActionListener {
         if (e.getSource() == createDatabaseButton) {
             layout.show(cardPanel, "createDatabase");
         } else if (e.getSource() == dropDatabaseButton) {
+            dropDatabasePanel.updateDatabaseComboBox();
             layout.show(cardPanel, "dropDatabase");
         } else if (e.getSource() == createTableButton) {
+            createTablePanel.updateDatabaseComboBox();
             layout.show(cardPanel, "createTable");
         } else if (e.getSource() == dropTableButton) {
+            dropTablePanel.updateDatabaseComboBox();
             layout.show(cardPanel, "dropTable");
         } else if (e.getSource() == createIndexButton) {
             layout.show(cardPanel, "createIndex");
@@ -130,12 +134,25 @@ public class ClientInterface extends JFrame implements ActionListener {
         }
     }
 
-    public String receiveMessageFromServer() {
+    public String readFromSocket() {
         try {
-            return socket.getInputStream().toString();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            return (String) objectInputStream.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("ERROR at reading object from socket!");
+            endConnection();
+            return "";
         }
+    }
+
+    public String getDatabasesNames() {
+        writeIntoSocket("GETDATABASES");
+        return readFromSocket();
+    }
+
+    public String getTablesNames() {
+        System.out.println("get selected db: " + dropTablePanel.getSelectedDatabase());
+        writeIntoSocket("GETTABLES " + dropTablePanel.getSelectedDatabase().toString());
+        return readFromSocket();
     }
 
     public void showMenu() {
@@ -146,3 +163,4 @@ public class ClientInterface extends JFrame implements ActionListener {
         new ClientInterface();
     }
 }
+

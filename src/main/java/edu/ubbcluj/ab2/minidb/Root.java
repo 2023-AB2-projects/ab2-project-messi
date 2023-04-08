@@ -1,119 +1,71 @@
 package edu.ubbcluj.ab2.minidb;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
+//@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Root {
-    private List<Database> databases;
+    public List<Database> databases;
 
+    public Root() {
+        databases = new ArrayList<>();
+    }
+
+    public void listDatabses(){
+        System.out.println("Databases names:");
+        for(Database database : databases) {
+            System.out.println(database);
+        }
+    }
+
+    public JSONObject toJsonObject() {
+        JSONObject jsonObject = new JSONObject();
+
+        JSONArray jsonArray = new JSONArray();
+        for (Database database : databases) {
+            jsonArray.put(database.toJsonObject());
+        }
+        jsonObject.put("Databases", jsonArray);
+
+        return jsonObject;
+    }
+
+    //    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public class Database {
-        private List<Table> tables;
-        private String databaseName;
+        public List<Table> tables;
+        public String databaseName;
 
+        public Database(Root root, String databaseName) {
+            this.databaseName = databaseName;
+            tables = new ArrayList<>();
+            root.databases.add(this);
+        }
+
+        public JSONObject toJsonObject() {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("Database", databaseName);
+
+            JSONArray jsonArray = new JSONArray();
+            for (Table table : tables) {
+                jsonArray.put(table.toJsonObject());
+            }
+            jsonObject.put("Tables", jsonArray);
+
+            return jsonObject;
+        }
+
+//        @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
         public class Table {
-            private String tableName;
-            private List<Attribute> attributes;
-            private List<PrimaryKey> primaryKeys;
-            private List<ForeignKey> foreignKeys;
-            private List<UniqueKey> uniqueKeys;
-
-            public class Attribute {
-                private String attrName;
-                private String attrType;
-
-                public Attribute(Table table, String attrName, String attrType) {
-                    this.attrName = attrName;
-                    this.attrType = attrType;
-                    table.attributes.add(this);
-                }
-
-                public JSONObject toJsonObject() {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("attrName", attrName);
-                    jsonObject.put("attrType", attrType);
-                    return jsonObject;
-                }
-            }
-
-            public class PrimaryKey {
-                private String pkName;
-                private String pkType;
-
-                public PrimaryKey(Table table, String pkName, String pkType) {
-                    this.pkName = pkName;
-                    this.pkType = pkType;
-                    table.primaryKeys.add(this);
-                }
-
-                public JSONObject toJsonObject() {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("pkName", pkName);
-                    jsonObject.put("pkType", pkType);
-                    return jsonObject;
-                }
-            }
-
-            public class ForeignKey {
-                private String fkName;
-                private List<Reference> references;
-
-                public class Reference {
-                    private String tableName;
-                    private String attrName;
-
-                    public Reference(ForeignKey foreignKey, String tableName, String attrName) {
-                        this.tableName = tableName;
-                        this.attrName = attrName;
-                        foreignKey.references.add(this);
-                    }
-
-                    public JSONObject toJsonObject() {
-                        JSONObject jsonObject = new JSONObject();
-                        jsonObject.put("tableName", tableName);
-                        jsonObject.put("attrName", attrName);
-                        return jsonObject;
-                    }
-                }
-
-                public ForeignKey(Table table, String fkName) {
-                    this.fkName = fkName;
-                    this.references = new ArrayList<>();
-                    table.foreignKeys.add(this);
-                }
-
-                public JSONObject toJsonObject() {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("fkName", fkName);
-
-                    JSONArray jsonArray = new JSONArray();
-                    for (Reference reference : references) {
-                        jsonArray.put(reference.toJsonObject());
-                    }
-                    jsonObject.put("References", jsonArray);
-
-                    return jsonObject;
-                }
-            }
-
-            public class UniqueKey {
-                private String uqAttrName;
-
-                public UniqueKey(Table table, String uqAttrName) {
-                    this.uqAttrName = uqAttrName;
-                    table.uniqueKeys.add(this);
-                }
-
-                public JSONObject toJsonObject() {
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("uqAttrName", uqAttrName);
-                    return jsonObject;
-                }
-            }
-
-            // indexfile
+            public String tableName;
+            public List<Attribute> attributes;
+            public List<PrimaryKey> primaryKeys;
+            public List<ForeignKey> foreignKeys;
+            public List<UniqueKey> uniqueKeys;
 
             public Table(Database database, String tableName) {
                 this.tableName = tableName;
@@ -155,41 +107,106 @@ public class Root {
 
                 return jsonObject;
             }
-        }
 
-        public Database(Root root, String databaseName) {
-            this.databaseName = databaseName;
-            tables = new ArrayList<>();
-            root.databases.add(this);
-        }
+//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            public class Attribute {
+                public String attrName;
+                public String attrType;
 
-        public JSONObject toJsonObject() {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("Database", databaseName);
+                public Attribute(Table table, String attrName, String attrType) {
+                    this.attrName = attrName;
+                    this.attrType = attrType;
+                    table.attributes.add(this);
+                }
 
-            JSONArray jsonArray = new JSONArray();
-            for (Table table : tables) {
-                jsonArray.put(table.toJsonObject());
+                public JSONObject toJsonObject() {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("attrName", attrName);
+                    jsonObject.put("attrType", attrType);
+                    return jsonObject;
+                }
             }
-            jsonObject.put("Tables", jsonArray);
 
-            return jsonObject;
+//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            public class PrimaryKey {
+                public String pkName;
+                public String pkType;
+
+                public PrimaryKey(Table table, String pkName, String pkType) {
+                    this.pkName = pkName;
+                    this.pkType = pkType;
+                    table.primaryKeys.add(this);
+                }
+
+                public JSONObject toJsonObject() {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("pkName", pkName);
+                    jsonObject.put("pkType", pkType);
+                    return jsonObject;
+                }
+            }
+
+            // indexfile
+
+//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            public class ForeignKey {
+                public String fkName;
+                public List<Reference> references;
+
+                public ForeignKey(Table table, String fkName) {
+                    this.fkName = fkName;
+                    this.references = new ArrayList<>();
+                    table.foreignKeys.add(this);
+                }
+
+                public JSONObject toJsonObject() {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("fkName", fkName);
+
+                    JSONArray jsonArray = new JSONArray();
+                    for (Reference reference : references) {
+                        jsonArray.put(reference.toJsonObject());
+                    }
+                    jsonObject.put("References", jsonArray);
+
+                    return jsonObject;
+                }
+
+//                @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+                public class Reference {
+                    public String tableName;
+                    public String attrName;
+
+                    public Reference(ForeignKey foreignKey, String tableName, String attrName) {
+                        this.tableName = tableName;
+                        this.attrName = attrName;
+                        foreignKey.references.add(this);
+                    }
+
+                    public JSONObject toJsonObject() {
+                        JSONObject jsonObject = new JSONObject();
+                        jsonObject.put("tableName", tableName);
+                        jsonObject.put("attrName", attrName);
+                        return jsonObject;
+                    }
+                }
+            }
+
+//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            public class UniqueKey {
+                public String uqAttrName;
+
+                public UniqueKey(Table table, String uqAttrName) {
+                    this.uqAttrName = uqAttrName;
+                    table.uniqueKeys.add(this);
+                }
+
+                public JSONObject toJsonObject() {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("uqAttrName", uqAttrName);
+                    return jsonObject;
+                }
+            }
         }
-    }
-
-    public Root() {
-        databases = new ArrayList<>();
-    }
-
-    public JSONObject toJsonObject() {
-        JSONObject jsonObject = new JSONObject();
-
-        JSONArray jsonArray = new JSONArray();
-        for (Database database : databases) {
-            jsonArray.put(database.toJsonObject());
-        }
-        jsonObject.put("Databases", jsonArray);
-
-        return jsonObject;
     }
 }
