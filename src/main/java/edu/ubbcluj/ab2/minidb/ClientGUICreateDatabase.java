@@ -6,12 +6,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class ClientGUICreateDatabase extends JPanel implements ActionListener {
-    ClientInterface clientInterface;
-    JLabel jlabel;
-    JTextField textField;
-    JButton submitButton;
-    JButton backButton;
-    String query;
+    private ClientInterface clientInterface;
+    private JLabel jlabel;
+    private JTextField textField;
+    private JButton submitButton;
+    private JButton backButton;
+    private String query;
 
     public ClientGUICreateDatabase(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
@@ -41,22 +41,11 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
                 query = "CREATE DATABASE " + databaseName + ";\n";
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                 clientInterface.writeIntoSocket(query);
+
             }
         } else if (e.getSource() == backButton) {
             textField.setText("");
             clientInterface.showMenu();
         }
-    }
-
-    public JTextField getTextField() {
-        return textField;
-    }
-
-    public void setTextField(JTextField textField) {
-        this.textField = textField;
-    }
-
-    public String getDatabaseName() {
-        return textField.getText();
     }
 }

@@ -6,20 +6,22 @@ import java.util.Arrays;
 import javax.swing.*;
 
 public class ClientGUICreateTable extends JPanel implements ActionListener {
-    ClientInterface clientInterface;
+    private ClientInterface clientInterface;
     private JPanel inputPanel;
     private JLabel databaseNameLabel;
     private JLabel tableNameLabel;
     private JLabel columnNameLabel;
     private JLabel columnTypeLabel;
+
     private JLabel pkLabel;
     private JLabel fkLable;
     private JLabel fkToTableLabel;
     private JLabel fkToColumnLabel;
-    private JComboBox<String> jComboBox;
+    private MyComboBox jComboBox;
     private JTextField tableNameField;
     private JTextField columnNameField;
-    private JTextField columnTypeField;
+    private JComboBox columnTypeBox;
+
     private JTextField fkToTabelField;
     private JTextField fkToColumnField;
     private JCheckBox pkCheckBox;
@@ -34,7 +36,6 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private String query;
     private Boolean isPrimaryKey;
     private Boolean isForeignKey;
-    private String[] stringOfDatabases;
 
 
     public ClientGUICreateTable(ClientInterface clientInterface) {
@@ -47,10 +48,12 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         fkToTableLabel = new JLabel("Table Name:");
         fkToColumnLabel = new JLabel("Column Name:");
 
-        jComboBox = new JComboBox<>();
+        jComboBox = new MyComboBox(clientInterface.getDatabasesNames());
+        jComboBox.setSelectedIndex(0);
         tableNameField = new JTextField(20);
         columnNameField = new JTextField(20);
-        columnTypeField = new JTextField(20);
+        columnTypeBox = new JComboBox(new String[]{"INT", "FLOAT", "BIT", "DATE", "DATETIME", "VARCHAR"});
+        columnTypeBox.setSelectedIndex(0);
         fkToTabelField = new JTextField(20);
         fkToColumnField = new JTextField(20);
 
@@ -86,7 +89,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         inputPanel.add(columnNameLabel);
         inputPanel.add(columnNameField);
         inputPanel.add(columnTypeLabel);
-        inputPanel.add(columnTypeField);
+        inputPanel.add(columnTypeBox);
         inputPanel.add(pkLabel);
         inputPanel.add(pkCheckBox);
         inputPanel.add(fkLable);
@@ -127,7 +130,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == addColumnButton) {
             String columnName = columnNameField.getText();
-            String columnType = columnTypeField.getText().toUpperCase();
+            String columnType = (String) columnTypeBox.getSelectedItem();
 
             // if there were columns added before, a "," needs to be added to the end of the line
             if (!queryAreaMessage.getText().equals("")) {
@@ -157,7 +160,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                 fkToColumnField.setText("");
                 fkPanel.setVisible(false);
                 columnNameField.setText("");
-                columnTypeField.setText("");
+                columnTypeBox.setSelectedIndex(0);
             }
         } else if (e.getSource() == createTableButton) {
             String tableName = tableNameField.getText();
@@ -177,7 +180,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
                     tableNameField.setText("");
                     columnNameField.setText("");
-                    columnTypeField.setText("");
+                    columnTypeBox.setSelectedIndex(0);
                     pkCheckBox.setSelected(false);
                     isPrimaryKey = false;
                     queryAreaMessage.setText("");
@@ -190,7 +193,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         } else if (e.getSource() == clearAllButton) {
             tableNameField.setText("");
             columnNameField.setText("");
-            columnTypeField.setText("");
+            columnTypeBox.setSelectedIndex(0);
             pkCheckBox.setSelected(false);
             isPrimaryKey = false;
             queryAreaMessage.setText("");

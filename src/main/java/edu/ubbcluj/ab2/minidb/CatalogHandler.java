@@ -1,5 +1,7 @@
 package edu.ubbcluj.ab2.minidb;
 
+import com.mongodb.client.MongoClient;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,9 +18,11 @@ public class CatalogHandler {
     private Root.Database.Table.ForeignKey foreignKey;
     private Root.Database.Table.UniqueKey uniqueKey;
     private Root.Database.Table.ForeignKey.Reference reference;
+    private MongoClient mongoClient;
 
-    public CatalogHandler(String fileName) {
-        String jsonString = null;
+    public CatalogHandler(String fileName, MongoClient mongoClient) {
+        this.mongoClient = mongoClient;
+        String jsonString;
         try {
             jsonString = new String(Files.readAllBytes(Paths.get(fileName)));
         } catch (IOException e) {
@@ -27,8 +31,9 @@ public class CatalogHandler {
         this.root = RootDeserializer.deserialize(jsonString);
     }
 
-    public CatalogHandler() {
+    public CatalogHandler(MongoClient mongoClient) {
         this.root = new Root();
+        this.mongoClient = mongoClient;
     }
 
     public void saveCatalogToFile(String fileName) {
@@ -42,11 +47,21 @@ public class CatalogHandler {
         }
     }
 
+    public void refreshContent(String fileName) {
+        String jsonString;
+        try {
+            jsonString = new String(Files.readAllBytes(Paths.get(fileName)));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        this.root = RootDeserializer.deserialize(jsonString);
+    }
+
     public void createDatabase(String databaseName) {
         database = root.new Database(root, databaseName);
     }
 
-    public void deleteDatabase(String databaseName) {
+    public void dropDatabase(String databaseName) {
         Root.Database d = getInstanceOfDatabase(databaseName);
         root.databases.remove(d);
     }
@@ -56,7 +71,7 @@ public class CatalogHandler {
         table = d.new Table(d, tableName);
     }
 
-    public void deleteTable(String databaseName, String tableName) {
+    public void dropTable(String databaseName, String tableName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
         Root.Database d = this.getInstanceOfDatabase(databaseName);
         d.tables.remove(t);
@@ -132,12 +147,18 @@ public class CatalogHandler {
     }
 
     public String getStringOfTables(String databaseName) {
-        String strigOfTables = "";
+        String stringOfTables = "";
         Root.Database d = getInstanceOfDatabase(databaseName);
-        for (Root.Database.Table t : d.tables) {
-            strigOfTables += t.tableName + " ";
+        if (d == null) {
+            return "";
         }
-        return strigOfTables;
+        for (Root.Database.Table t : d.tables) {
+            stringOfTables += t.tableName + " ";
+        }
+        if (stringOfTables.equalsIgnoreCase("")) {
+            return "";
+        }
+        return stringOfTables;
     }
 
     public Root.Database.Table getInstanceOfTable(String databaseName, String tableName) {

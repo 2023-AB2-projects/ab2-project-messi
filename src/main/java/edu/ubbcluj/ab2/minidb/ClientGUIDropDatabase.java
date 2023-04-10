@@ -9,11 +9,10 @@ import java.util.Arrays;
 public class ClientGUIDropDatabase extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
     private JLabel jlabel;
-    private JTextField textField;
     private JButton submitButton;
     private JButton backButton;
     private String query;
-    private JComboBox<String> jComboBox;
+    private MyComboBox jComboBox;
 
     public ClientGUIDropDatabase(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
@@ -21,7 +20,8 @@ public class ClientGUIDropDatabase extends JPanel implements ActionListener {
         this.setLayout(new GridLayout(2, 2));
 
         jlabel = new JLabel("Database Name: ");
-        jComboBox = new JComboBox<>();
+        jComboBox = new MyComboBox(clientInterface.getDatabasesNames());
+        jComboBox.setSelectedIndex(0);
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
 
@@ -40,6 +40,8 @@ public class ClientGUIDropDatabase extends JPanel implements ActionListener {
             query = "DROP DATABASE " + jComboBox.getSelectedItem() + ";\n";
             JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
             clientInterface.writeIntoSocket(query);
+            jComboBox.updateComboBox(clientInterface.getDatabasesNames());
+            jComboBox.setSelectedIndex(0);
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
         }
