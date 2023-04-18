@@ -176,6 +176,8 @@ public class MyServer {
 
     public void dropDatabase(String databaseName) {
         catalogHandler.dropDatabase(databaseName);
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
+        database.drop();
     }
 
     public void createTable(String[] message, String databaseName, String tableName) {
@@ -207,6 +209,9 @@ public class MyServer {
 
     public void dropTable(String databaseName, String tableName) {
         catalogHandler.dropTable(databaseName, tableName);
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
+        MongoCollection<Document> collection = database.getCollection(tableName);
+        collection.drop();
     }
 
     public void insert(String databaseName, String tableName, String[] message) {
@@ -214,7 +219,7 @@ public class MyServer {
         MongoCollection<Document> collection = database.getCollection(tableName);
         Document document;
         int i = 4;
-        //int nr = getNumberOfTableAttributes(tableName);
+        //int nr = getNumberOfTableAttributes(databaseName, tableName);
         int nr = 3;
         while (i < message.length) {
             document = new Document("key", message[i]);
@@ -232,6 +237,7 @@ public class MyServer {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> table = database.getCollection(tableName);
         Document doc = table.find(Filters.eq("key", condition)).first();
+        System.out.println(condition);
         if (doc != null) {
             table.deleteOne(doc);
         } else {
