@@ -132,11 +132,6 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             String columnName = columnNameField.getText();
             String columnType = (String) columnTypeBox.getSelectedItem();
 
-            // if there were columns added before, a "," needs to be added to the end of the line
-            if (!queryAreaMessage.getText().equals("")) {
-                queryAreaMessage.append(",\n");
-            }
-
             if (pkCheckBox.isSelected() && isPrimaryKey) {
                 JOptionPane.showMessageDialog(this, "There's already a primary key to this table.");
             } else if (columnName.isEmpty()) {
@@ -144,6 +139,10 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             } else if (columnType.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter a column type.");
             } else {
+                // if there were columns added before, a "," needs to be added to the end of the line
+                if (!queryAreaMessage.getText().equals("")) {
+                    queryAreaMessage.append(",\n");
+                }
                 if (pkCheckBox.isSelected()) {
                     isPrimaryKey = true;
                     queryAreaMessage.append(columnName + " " + columnType + " PRIMARY KEY");

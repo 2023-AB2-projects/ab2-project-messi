@@ -95,13 +95,11 @@ public class MyServer {
             // if the client requests the name of the existent databases in the JSON file
             case "GETDATABASES" -> {
                 writeIntoSocket(catalogHandler.getStringOfDatabases());
-                System.out.println(catalogHandler.getStringOfDatabases());
             }
             // if the client requests the name of the existent tables in a database(message[1]) in the JSON file
             case "GETTABLES" -> {
                 String databaseName = message[1];
                 writeIntoSocket(catalogHandler.getStringOfTables(databaseName));
-                System.out.println(catalogHandler.getStringOfTables(databaseName));
             }
             case "INSERT" -> {
                 String[] string = message[2].split("\\.");
