@@ -11,8 +11,10 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.json.JSONObject;
 
+import javax.swing.*;
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 
 // TODO: ha leallitjuk a klienst akkor a server tovabb fusson es varja az uzeneteket
 
@@ -28,7 +30,7 @@ public class MyServer {
 
     public MyServer() {
         startConnection();
-        mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost:27017"));
+        mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost:27017/"));
         catalogHandler = isFileEmpty(fileName) ? new CatalogHandler(mongoClient) : new CatalogHandler(fileName, mongoClient);
 
         while (run) {
@@ -76,6 +78,12 @@ public class MyServer {
                         createTable(message, string[0], string[1]);
                     }
                     case "INDEX" -> {
+                        String[] string = message[4].split("\\.");
+                        ArrayList<String> fields = new ArrayList<>();
+                        for (int i = 5; i < message.length; i++) {
+                            fields.add(message[i]);
+                        }
+                        createIndex(fields, string[0], string[1], message[3]);
                     }
                 }
             }
@@ -100,6 +108,10 @@ public class MyServer {
             case "GETTABLES" -> {
                 String databaseName = message[1];
                 writeIntoSocket(catalogHandler.getStringOfTables(databaseName));
+            }
+            // if the client requests the nam of the fields of one table from a specified database
+            case "GETFIELDS" -> {
+                writeIntoSocket(catalogHandler.getStringOfTableFields(message[1], message[2]));
             }
             case "INSERT" -> {
                 String[] string = message[2].split("\\.");
@@ -170,6 +182,7 @@ public class MyServer {
 
     public void createDatabase(String databaseName) {
         catalogHandler.createDatabase(databaseName);
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
     }
 
     public void dropDatabase(String databaseName) {
@@ -180,6 +193,8 @@ public class MyServer {
 
     public void createTable(String[] message, String databaseName, String tableName) {
         catalogHandler.createTable(databaseName, tableName);
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
+        MongoCollection<Document> table = database.getCollection(tableName);
 
         int i = 3;
         while (i < message.length) {
@@ -205,6 +220,13 @@ public class MyServer {
         }
     }
 
+    public void createIndex(ArrayList<String> fields, String databaseName, String tableName, String indexName) {
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
+        MongoCollection<Document> collection = database.getCollection(tableName);
+        indexName = "Index_".concat(databaseName.concat("_")).concat(tableName.concat("_")).concat(indexName);
+        // TODO: json-be is!!! (vigyazat, lehet tobb field-re csinalni -> arrayben vagy valami ilyesmiben kene tarolni)
+    }
+
     public void dropTable(String databaseName, String tableName) {
         catalogHandler.dropTable(databaseName, tableName);
         MongoDatabase database = mongoClient.getDatabase(databaseName);
@@ -217,8 +239,7 @@ public class MyServer {
         MongoCollection<Document> collection = database.getCollection(tableName);
         Document document;
         int i = 4;
-        //int nr = getNumberOfTableAttributes(databaseName, tableName);
-        int nr = 3;
+        int nr = catalogHandler.getNumberOfAttributes(databaseName, tableName);
         while (i < message.length) {
             document = new Document("key", message[i]);
             String value = message[i + 1];

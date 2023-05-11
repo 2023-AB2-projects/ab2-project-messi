@@ -68,13 +68,4 @@ public class ClientGUIDropTable extends JPanel implements ActionListener {
             jComboBoxDatabase.addItem(element);
         }
     }
-
-//    public void updateTableComboBox() {
-//        jComboBoxTable.removeAllItems();
-//        String[] elements = clientInterface.getTablesNames().split(" ");
-//        Arrays.sort(elements);
-//        for (String element : elements) {
-//            jComboBoxTable.addItem(element);
-//        }
-//    }
 }

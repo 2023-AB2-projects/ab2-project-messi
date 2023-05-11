@@ -174,6 +174,12 @@ public class ClientInterface extends JFrame implements ActionListener {
         return readFromSocket();
     }
 
+    public String getFieldNames(String databaseName, String tableName) {
+        writeIntoSocket("GETFIELDS " + databaseName + " " + tableName);
+        return readFromSocket();
+    }
+
+
     public void showMenu() {
         layout.show(cardPanel, "menu");
     }

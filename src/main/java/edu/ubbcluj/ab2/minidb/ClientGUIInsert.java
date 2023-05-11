@@ -109,10 +109,12 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                 clientInterface.writeIntoSocket(query);
                 valuesTextArea.setText("");
+                values = "";
             }
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
             valuesTextArea.setText("");
+            values = "";
         }
     }
 

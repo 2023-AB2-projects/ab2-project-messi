@@ -264,19 +264,36 @@ public class CatalogHandler {
         String stringOfTables = "";
         Root.Database d = getInstanceOfDatabase(databaseName);
         if (d == null) {
-            return "";
+            return null;
         }
         for (Root.Database.Table t : d.tables) {
             stringOfTables += t.tableName + " ";
         }
         if (stringOfTables.equalsIgnoreCase("")) {
-            return "";
+            return null;
         }
         return stringOfTables;
     }
 
+    public String getStringOfTableFields(String databaseName, String tableName) {
+        Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
+        if (t == null) {
+            return null;
+        }
+        String stringOfTableFields = "";
+
+        for (Root.Database.Table.Attribute a : t.attributes) {
+            stringOfTableFields += a.attrName + " ";
+        }
+
+        return stringOfTableFields;
+    }
+
     public Root.Database.Table getInstanceOfTable(String databaseName, String tableName) {
         Root.Database d = this.getInstanceOfDatabase(databaseName);
+        if(d == null){
+            return null;
+        }
         for (Root.Database.Table t : d.tables) {
             if (Objects.equals(t.tableName, tableName)) {
                 return t;

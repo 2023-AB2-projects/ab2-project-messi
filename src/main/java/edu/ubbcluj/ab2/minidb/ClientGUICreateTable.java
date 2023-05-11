@@ -20,10 +20,10 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private MyComboBox jComboBox;
     private JTextField tableNameField;
     private JTextField columnNameField;
-    private JComboBox columnTypeBox;
+    private JComboBox<String> columnTypeBox;
 
-    private JTextField fkToTabelField;
-    private JTextField fkToColumnField;
+    private MyComboBox fkToTabelField;
+    private MyComboBox fkToColumnField;
     private JCheckBox pkCheckBox;
     private JCheckBox fkCheckBox;
     private JPanel fkPanel;
@@ -52,10 +52,12 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         jComboBox.setSelectedIndex(0);
         tableNameField = new JTextField(20);
         columnNameField = new JTextField(20);
-        columnTypeBox = new JComboBox(new String[]{"INT", "FLOAT", "BIT", "DATE", "DATETIME", "VARCHAR"});
+        columnTypeBox = new JComboBox<>(new String[]{"INT", "FLOAT", "BIT", "DATE", "DATETIME", "VARCHAR"});
         columnTypeBox.setSelectedIndex(0);
-        fkToTabelField = new JTextField(20);
-        fkToColumnField = new JTextField(20);
+        fkToTabelField = new MyComboBox(clientInterface.getTablesNames((String) jComboBox.getSelectedItem()));
+        fkToTabelField.setSelectedIndex(0);
+        fkToColumnField = new MyComboBox(clientInterface.getFieldNames((String) jComboBox.getSelectedItem(), (String) fkToTabelField.getSelectedItem()));
+        fkToColumnField.setSelectedIndex(0);
 
         addColumnButton = new JButton("Add Column");
         backButton = new JButton("Back");
@@ -136,30 +138,33 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                 JOptionPane.showMessageDialog(this, "There's already a primary key to this table.");
             } else if (columnName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter a column name.");
-            } else if (columnType.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Enter a column type.");
             } else {
-                // if there were columns added before, a "," needs to be added to the end of the line
-                if (!queryAreaMessage.getText().equals("")) {
-                    queryAreaMessage.append(",\n");
+                assert columnType != null;
+                if (columnType.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Enter a column type.");
+                } else {
+                    // if there were columns added before, a "," needs to be added to the end of the line
+                    if (!queryAreaMessage.getText().equals("")) {
+                        queryAreaMessage.append(",\n");
+                    }
+                    if (pkCheckBox.isSelected()) {
+                        isPrimaryKey = true;
+                        queryAreaMessage.append(columnName + " " + columnType + " PRIMARY KEY");
+                    }
+                    if (fkCheckBox.isSelected()) {
+                        queryAreaMessage.append(columnName + " " + columnType + " FOREIGN KEY REFERENCES " + fkToTabelField.getSelectedItem() + "(" + fkToColumnField.getSelectedItem() + ")");
+                    }
+                    if (!pkCheckBox.isSelected() && !fkCheckBox.isSelected()) {
+                        queryAreaMessage.append(columnName + " " + columnType);
+                    }
+                    pkCheckBox.setSelected(false);
+                    fkCheckBox.setSelected(false);
+                    fkToTabelField.setSelectedIndex(0);
+                    fkToColumnField.setSelectedIndex(0);
+                    fkPanel.setVisible(false);
+                    columnNameField.setText("");
+                    columnTypeBox.setSelectedIndex(0);
                 }
-                if (pkCheckBox.isSelected()) {
-                    isPrimaryKey = true;
-                    queryAreaMessage.append(columnName + " " + columnType + " PRIMARY KEY");
-                }
-                if (fkCheckBox.isSelected()) {
-                    queryAreaMessage.append(columnName + " " + columnType + " FOREIGN KEY REFERENCES " + fkToTabelField.getText() + "(" + fkToColumnField.getText() + ")");
-                }
-                if (!pkCheckBox.isSelected() && !fkCheckBox.isSelected()) {
-                    queryAreaMessage.append(columnName + " " + columnType);
-                }
-                pkCheckBox.setSelected(false);
-                fkCheckBox.setSelected(false);
-                fkToTabelField.setText("");
-                fkToColumnField.setText("");
-                fkPanel.setVisible(false);
-                columnNameField.setText("");
-                columnTypeBox.setSelectedIndex(0);
             }
         } else if (e.getSource() == createTableButton) {
             String tableName = tableNameField.getText();
