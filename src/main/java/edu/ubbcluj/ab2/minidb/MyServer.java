@@ -7,14 +7,11 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import org.bson.Document;
-import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 import org.json.JSONObject;
-
-import javax.swing.*;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 // TODO: ha leallitjuk a klienst akkor a server tovabb fusson es varja az uzeneteket
 
@@ -79,10 +76,7 @@ public class MyServer {
                     }
                     case "INDEX" -> {
                         String[] string = message[4].split("\\.");
-                        ArrayList<String> fields = new ArrayList<>();
-                        for (int i = 5; i < message.length; i++) {
-                            fields.add(message[i]);
-                        }
+                        ArrayList<String> fields = new ArrayList<>(Arrays.asList(message).subList(5, message.length));
                         createIndex(fields, string[0], string[1], message[3]);
                     }
                 }
@@ -101,17 +95,24 @@ public class MyServer {
                 }
             }
             // if the client requests the name of the existent databases in the JSON file
-            case "GETDATABASES" -> {
-                writeIntoSocket(catalogHandler.getStringOfDatabases());
-            }
+            case "GETDATABASES" -> writeIntoSocket(catalogHandler.getStringOfDatabases());
             // if the client requests the name of the existent tables in a database(message[1]) in the JSON file
             case "GETTABLES" -> {
-                String databaseName = message[1];
-                writeIntoSocket(catalogHandler.getStringOfTables(databaseName));
+                if (message.length == 2) {
+                    writeIntoSocket(catalogHandler.getStringOfTables(message[1]));
+
+                } else {
+                    writeIntoSocket("");
+                }
             }
             // if the client requests the nam of the fields of one table from a specified database
             case "GETFIELDS" -> {
-                writeIntoSocket(catalogHandler.getStringOfTableFields(message[1], message[2]));
+                if (message.length == 3) {
+                    writeIntoSocket(catalogHandler.getStringOfTableFields(message[1], message[2]));
+
+                } else {
+                    writeIntoSocket("");
+                }
             }
             case "INSERT" -> {
                 String[] string = message[2].split("\\.");
@@ -197,26 +198,35 @@ public class MyServer {
         MongoCollection<Document> table = database.getCollection(tableName);
 
         int i = 3;
-        while (i < message.length) {
+        while (i < message.length && !message[i].equals("CONSTRAINT")) {
             String attrName = message[i++];
             String attrType = message[i++];
             if (i >= message.length) {
                 break;
             }
+            catalogHandler.createAttribute(databaseName, tableName, attrName, attrType);
+        }
+
+        // CONSTRAINTS
+        while (i < message.length) {
+            i += 2;
             switch (message[i]) {
                 case "FOREIGN" -> { // Current column is Foreign Key
-                    i += 3;     // "KEY", "REFERENCES"
+                    String attrName = message[i + 2];
+                    i += 3; // "REFERENCES"
                     String refTableName = message[i++];
                     String refAttrName = message[i++];
                     catalogHandler.createForeignKey(databaseName, tableName, attrName);
                     catalogHandler.createReference(databaseName, tableName, attrName, refTableName, refAttrName);
                 }
                 case "PRIMARY" -> { // Current column is the Primary Key for the table
-                    i += 2;     // KEY
-                    catalogHandler.createPrimaryKey(databaseName, tableName, attrName, attrType);
+                    i += 2;
+                    while (i < message.length && !message[i].equals("CONSTRAINT")) {
+                        catalogHandler.createPrimaryKey(databaseName, tableName, message[i]);
+                        i++;
+                    }
                 }
             }
-            catalogHandler.createAttribute(databaseName, tableName, attrName, attrType);
         }
     }
 
@@ -237,30 +247,43 @@ public class MyServer {
     public void insert(String databaseName, String tableName, String[] message) {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> collection = database.getCollection(tableName);
-        Document document;
-        int i = 4;
+
         int nr = catalogHandler.getNumberOfAttributes(databaseName, tableName);
+        if (nr != message.length - 4) {
+            System.out.println("Did not complete insertion: Column name or number of supplied values does not match table definition");
+            return;
+        }
+
+        String value = "", id;
+        int i = 4, nrPK = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
+        nr -= nrPK;
         while (i < message.length) {
-            document = new Document("key", message[i]);
-            String value = message[i + 1];
-            for (int j = i + 2; j < i + nr; j++) {
-                value += "#" + message[j];
+            id = message[i];
+            for (int j = 1; j < nrPK; j++) {
+                id += "#" + message[i + j];
             }
-            document.append("value", value);
-            collection.insertOne(document);
-            i += nr;
+            i += nrPK;
+
+            if (i < message.length) {
+                value += message[i];
+                for (int j = 1; j < nr; j++) {
+                    value += "#" + (message[i + j]);
+                }
+                i += nr;
+            }
+            collection.insertOne(new Document().append("_id", id).append("value", value));
         }
     }
 
     public void delete(String databaseName, String tableName, String condition) {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> table = database.getCollection(tableName);
-        Document doc = table.find(Filters.eq("key", condition)).first();
+        Document doc = table.find(Filters.eq("_id", condition)).first();
         System.out.println(condition);
         if (doc != null) {
             table.deleteOne(doc);
         } else {
-            //hiba
+            System.out.println("There is no data with such ID. 0 rows deleted");
         }
     }
 

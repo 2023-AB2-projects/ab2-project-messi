@@ -4,68 +4,58 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Arrays;
-import java.util.Objects;
 
 public class ClientGUIDropTable extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
-    private JLabel databaseLabel;
-    private JLabel tabelLabel;
-    private MyComboBox jComboBoxTable;
-    private MyComboBox jComboBoxDatabase;
+    private MyComboBox databaseComboBox;
+    private MyComboBox tableComboBox;
     private JButton submitButton;
     private JButton backButton;
-    private String query;
 
     public ClientGUIDropTable(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
 
         this.setLayout(new GridLayout(3, 2));
 
-        databaseLabel = new JLabel("Database Name: ");
-        jComboBoxDatabase = new MyComboBox(clientInterface.getDatabasesNames());
-        jComboBoxDatabase.setSelectedIndex(0);
-        tabelLabel = new JLabel("Table Name: ");
-        jComboBoxTable = new MyComboBox(clientInterface.getTablesNames((String) jComboBoxDatabase.getSelectedItem()));
-        jComboBoxTable.setSelectedIndex(0);
+        JLabel databaseLabel = new JLabel("Database Name: ");
+        databaseComboBox = new MyComboBox(clientInterface.getDatabasesNames());
+        databaseComboBox.setSelectedIndex(0);
+        JLabel tableLabel = new JLabel("Table Name: ");
+        tableComboBox = new MyComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
+        tableComboBox.setSelectedIndex(0);
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
 
 
-        jComboBoxDatabase.addActionListener(this);
+        databaseComboBox.addActionListener(this);
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
 
         this.add(databaseLabel);
-        this.add(jComboBoxDatabase);
-        this.add(tabelLabel);
-        this.add(jComboBoxTable);
+        this.add(databaseComboBox);
+        this.add(tableLabel);
+        this.add(tableComboBox);
         this.add(backButton);
         this.add(submitButton);
         this.setVisible(true);
     }
 
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == jComboBoxDatabase) {
-            jComboBoxTable.updateComboBox(clientInterface.getTablesNames((String) jComboBoxDatabase.getSelectedItem()));
+        if (e.getSource() == databaseComboBox) {
+            tableComboBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
         }
 
         if (e.getSource() == submitButton) {
-            query = "DROP TABLE " + jComboBoxDatabase.getSelectedItem() + "." + jComboBoxTable.getSelectedItem() + ";\n";
+            String query = "DROP TABLE " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem() + ";\n";
             JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
             clientInterface.writeIntoSocket(query);
-            jComboBoxTable.updateComboBox(clientInterface.getTablesNames((String) jComboBoxDatabase.getSelectedItem()));
+            tableComboBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
         }
     }
 
-    public void updateDatabaseComboBox() {
-        jComboBoxDatabase.removeAllItems();
-        String[] elements = clientInterface.getDatabasesNames().split(" ");
-        Arrays.sort(elements);
-        for (String element : elements) {
-            jComboBoxDatabase.addItem(element);
-        }
+    public MyComboBox getDatabaseComboBox() {
+        return this.databaseComboBox;
     }
 }

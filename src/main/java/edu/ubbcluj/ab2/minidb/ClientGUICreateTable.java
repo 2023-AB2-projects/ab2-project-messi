@@ -2,28 +2,16 @@ package edu.ubbcluj.ab2.minidb;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Arrays;
 import javax.swing.*;
 
 public class ClientGUICreateTable extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
-    private JPanel inputPanel;
-    private JLabel databaseNameLabel;
-    private JLabel tableNameLabel;
-    private JLabel columnNameLabel;
-    private JLabel columnTypeLabel;
-
-    private JLabel pkLabel;
-    private JLabel fkLable;
-    private JLabel fkToTableLabel;
-    private JLabel fkToColumnLabel;
-    private MyComboBox jComboBox;
+    private MyComboBox databaseComboBox;
     private JTextField tableNameField;
     private JTextField columnNameField;
     private JComboBox<String> columnTypeBox;
-
-    private MyComboBox fkToTabelField;
-    private MyComboBox fkToColumnField;
+    private MyComboBox fkToTableBox;
+    private MyComboBox fkToColumnBox;
     private JCheckBox pkCheckBox;
     private JCheckBox fkCheckBox;
     private JPanel fkPanel;
@@ -32,32 +20,30 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private JButton createTableButton;
     private JButton clearAllButton;
     private JTextArea queryAreaMessage;
-    private JScrollPane scrollPane;
-    private String query;
-    private Boolean isPrimaryKey;
-    private Boolean isForeignKey;
+    private String primaryKey = "";
+    private String foreignKey = "";
 
 
     public ClientGUICreateTable(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
 
-        databaseNameLabel = new JLabel("Database Name:");
-        tableNameLabel = new JLabel("Table Name:");
-        columnNameLabel = new JLabel("Column Name:");
-        columnTypeLabel = new JLabel("Column Type:");
-        fkToTableLabel = new JLabel("Table Name:");
-        fkToColumnLabel = new JLabel("Column Name:");
+        JLabel databaseNameLabel = new JLabel("Database Name:");
+        JLabel tableNameLabel = new JLabel("Table Name:");
+        JLabel columnNameLabel = new JLabel("Column Name:");
+        JLabel columnTypeLabel = new JLabel("Column Type:");
+        JLabel fkToTableLabel = new JLabel("Table Name:");
+        JLabel fkToColumnLabel = new JLabel("Column Name:");
 
-        jComboBox = new MyComboBox(clientInterface.getDatabasesNames());
-        jComboBox.setSelectedIndex(0);
+        databaseComboBox = new MyComboBox(clientInterface.getDatabasesNames());
+        databaseComboBox.setSelectedIndex(0);
         tableNameField = new JTextField(20);
         columnNameField = new JTextField(20);
         columnTypeBox = new JComboBox<>(new String[]{"INT", "FLOAT", "BIT", "DATE", "DATETIME", "VARCHAR"});
         columnTypeBox.setSelectedIndex(0);
-        fkToTabelField = new MyComboBox(clientInterface.getTablesNames((String) jComboBox.getSelectedItem()));
-        fkToTabelField.setSelectedIndex(0);
-        fkToColumnField = new MyComboBox(clientInterface.getFieldNames((String) jComboBox.getSelectedItem(), (String) fkToTabelField.getSelectedItem()));
-        fkToColumnField.setSelectedIndex(0);
+        fkToTableBox = new MyComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
+        fkToTableBox.setSelectedIndex(0);
+        fkToColumnBox = new MyComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
+        fkToColumnBox.setSelectedIndex(0);
 
         addColumnButton = new JButton("Add Column");
         backButton = new JButton("Back");
@@ -66,16 +52,13 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
         queryAreaMessage = new JTextArea(10, 40);
         queryAreaMessage.setEditable(false);
-        scrollPane = new JScrollPane(queryAreaMessage);
+        JScrollPane scrollPane = new JScrollPane(queryAreaMessage);
 
-        pkLabel = new JLabel("Primary key");
-        fkLable = new JLabel("Foreign key");
+        JLabel pkLabel = new JLabel("Primary key");
+        JLabel fkLabel = new JLabel("Foreign key");
 
         pkCheckBox = new JCheckBox();
         fkCheckBox = new JCheckBox();
-
-        isPrimaryKey = false;
-        isForeignKey = false;
 
         addColumnButton.addActionListener(this);
         backButton.addActionListener(this);
@@ -83,9 +66,9 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         clearAllButton.addActionListener(this);
         fkCheckBox.addActionListener(this);
 
-        inputPanel = new JPanel(new GridLayout(7, 2, 5, 5));
+        JPanel inputPanel = new JPanel(new GridLayout(7, 2, 5, 5));
         inputPanel.add(databaseNameLabel);
-        inputPanel.add(jComboBox);
+        inputPanel.add(databaseComboBox);
         inputPanel.add(tableNameLabel);
         inputPanel.add(tableNameField);
         inputPanel.add(columnNameLabel);
@@ -94,14 +77,14 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         inputPanel.add(columnTypeBox);
         inputPanel.add(pkLabel);
         inputPanel.add(pkCheckBox);
-        inputPanel.add(fkLable);
+        inputPanel.add(fkLabel);
         inputPanel.add(fkCheckBox);
 
         fkPanel = new JPanel(new GridLayout(2, 2, 5, 5));
         fkPanel.add(fkToTableLabel);
-        fkPanel.add(fkToTabelField);
+        fkPanel.add(fkToTableBox);
         fkPanel.add(fkToColumnLabel);
-        fkPanel.add(fkToColumnField);
+        fkPanel.add(fkToColumnBox);
         fkPanel.setVisible(false);
 
         JPanel inputDataPanel = new JPanel(new GridLayout(2, 2));
@@ -134,9 +117,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             String columnName = columnNameField.getText();
             String columnType = (String) columnTypeBox.getSelectedItem();
 
-            if (pkCheckBox.isSelected() && isPrimaryKey) {
-                JOptionPane.showMessageDialog(this, "There's already a primary key to this table.");
-            } else if (columnName.isEmpty()) {
+            if (columnName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter a column name.");
             } else {
                 assert columnType != null;
@@ -147,20 +128,29 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                     if (!queryAreaMessage.getText().equals("")) {
                         queryAreaMessage.append(",\n");
                     }
+
                     if (pkCheckBox.isSelected()) {
-                        isPrimaryKey = true;
-                        queryAreaMessage.append(columnName + " " + columnType + " PRIMARY KEY");
+                        if (primaryKey.equals("")) {
+                            primaryKey += columnName;
+                        } else {
+                            primaryKey += ", " + columnName;
+                        }
                     }
+
                     if (fkCheckBox.isSelected()) {
-                        queryAreaMessage.append(columnName + " " + columnType + " FOREIGN KEY REFERENCES " + fkToTabelField.getSelectedItem() + "(" + fkToColumnField.getSelectedItem() + ")");
+                        if (foreignKey.equals("")) {
+                            foreignKey += "CONSTRAINT FK_" + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
+
+                        } else {
+                            foreignKey += ",\nCONSTRAINT FK_" + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
+                        }
+
                     }
-                    if (!pkCheckBox.isSelected() && !fkCheckBox.isSelected()) {
-                        queryAreaMessage.append(columnName + " " + columnType);
-                    }
+                    queryAreaMessage.append(columnName + " " + columnType);
                     pkCheckBox.setSelected(false);
                     fkCheckBox.setSelected(false);
-                    fkToTabelField.setSelectedIndex(0);
-                    fkToColumnField.setSelectedIndex(0);
+                    fkToTableBox.setSelectedIndex(0);
+                    fkToColumnBox.setSelectedIndex(0);
                     fkPanel.setVisible(false);
                     columnNameField.setText("");
                     columnTypeBox.setSelectedIndex(0);
@@ -175,10 +165,16 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                     JOptionPane.showMessageDialog(this, "Insert columns into " + tableName + " table.");
                 }
             } else {
-                if (!isPrimaryKey) {
+                if (primaryKey.equals("")) {
                     JOptionPane.showMessageDialog(this, "Declare a primary key to the " + tableName + " table.");
                 } else {
-                    query = "CREATE TABLE " + jComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + "\n);";
+                    String query;
+                    if(foreignKey.equals("")){
+                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK PRIMARY KEY(" + primaryKey + ")\n);";
+                    }
+                    else{
+                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK PRIMARY KEY(" + primaryKey + ")\n" + foreignKey + "\n);";
+                    }
                     JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                     clientInterface.writeIntoSocket(query);
 
@@ -186,20 +182,31 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                     columnNameField.setText("");
                     columnTypeBox.setSelectedIndex(0);
                     pkCheckBox.setSelected(false);
-                    isPrimaryKey = false;
+                    primaryKey = "";
+                    foreignKey = "";
                     queryAreaMessage.setText("");
                     fkPanel.setVisible(false);
                     fkCheckBox.setSelected(false);
                 }
             }
         } else if (e.getSource() == fkCheckBox) {
+            fkToTableBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
+            fkToTableBox.setSelectedIndex(0);
+            fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
+            fkToColumnBox.setSelectedIndex(0);
             fkPanel.setVisible(fkCheckBox.isSelected());
+        } else if (e.getSource() == fkToTableBox) {
+            if (fkToTableBox.getSelectedItem() != null) {
+                fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
+                fkToTableBox.setSelectedIndex(0);
+            }
         } else if (e.getSource() == clearAllButton) {
             tableNameField.setText("");
             columnNameField.setText("");
             columnTypeBox.setSelectedIndex(0);
             pkCheckBox.setSelected(false);
-            isPrimaryKey = false;
+            primaryKey = "";
+            foreignKey = "";
             queryAreaMessage.setText("");
             fkPanel.setVisible(false);
             fkCheckBox.setSelected(false);
@@ -208,12 +215,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         }
     }
 
-    public void updateDatabaseComboBox() {
-        jComboBox.removeAllItems();
-        String[] elements = clientInterface.getDatabasesNames().split(" ");
-        Arrays.sort(elements);
-        for (String element : elements) {
-            jComboBox.addItem(element);
-        }
+    public MyComboBox getDatabaseComboBox() {
+        return this.databaseComboBox;
     }
 }

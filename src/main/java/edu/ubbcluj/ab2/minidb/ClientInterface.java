@@ -5,17 +5,14 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.Arrays;
 
 public class ClientInterface extends JFrame implements ActionListener {
     private ObjectInputStream objectInputStream;
     private ObjectOutputStream objectOutputStream;
     private Socket socket;
-    private ClientGUICreateDatabase createDatabasePanel;
     private ClientGUIDropDatabase dropDatabasePanel;
     private ClientGUICreateTable createTablePanel;
     private ClientGUIDropTable dropTablePanel;
@@ -73,7 +70,7 @@ public class ClientInterface extends JFrame implements ActionListener {
 
 
         //panels:
-        createDatabasePanel = new ClientGUICreateDatabase(this);
+        ClientGUICreateDatabase createDatabasePanel = new ClientGUICreateDatabase(this);
         dropDatabasePanel = new ClientGUIDropDatabase(this);
         createTablePanel = new ClientGUICreateTable(this);
         dropTablePanel = new ClientGUIDropTable(this);
@@ -102,22 +99,22 @@ public class ClientInterface extends JFrame implements ActionListener {
         if (e.getSource() == createDatabaseButton) {
             layout.show(cardPanel, "createDatabase");
         } else if (e.getSource() == dropDatabaseButton) {
+            dropDatabasePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "dropDatabase");
-            dropDatabasePanel.updateDatabaseComboBox();
         } else if (e.getSource() == createTableButton) {
-            createTablePanel.updateDatabaseComboBox();
+            createTablePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "createTable");
         } else if (e.getSource() == dropTableButton) {
-            dropTablePanel.updateDatabaseComboBox();
+            dropTablePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "dropTable");
         } else if (e.getSource() == createIndexButton) {
-            createIndexPanel.updateDatabaseComboBox();
+            createIndexPanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "createIndex");
         } else if (e.getSource() == insertButton) {
-            insertPanel.updateDatabaseComboBox();
+            insertPanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "insert");
         } else if (e.getSource() == deleteButton) {
-            deletePanel.updateDatabaseComboBox();
+            deletePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "delete");
         }
     }
@@ -169,7 +166,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         return readFromSocket();
     }
 
-    public String getTablesNames(String databaseNames) {
+    public String getTableNames(String databaseNames) {
         writeIntoSocket("GETTABLES " + databaseNames);
         return readFromSocket();
     }

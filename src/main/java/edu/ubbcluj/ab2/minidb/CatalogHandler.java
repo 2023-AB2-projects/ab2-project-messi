@@ -60,8 +60,7 @@ public class CatalogHandler {
     public void createDatabase(String databaseName) {
         Root.Database d = getInstanceOfDatabase(databaseName);
         if (d != null) {
-            System.out.println("ERROR at creating the Database!");
-            System.out.println("The Database" + databaseName + " already exists!");
+            System.out.println("\nThe Database " + databaseName + " already exists!");
         } else {
             database = root.new Database(root, databaseName);
         }
@@ -142,15 +141,15 @@ public class CatalogHandler {
         }
     }
 
-    public void createPrimaryKey(String databaseName, String tableName, String attributeName, String attributeType) {
+    public void createPrimaryKey(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
         if (t != null) {
-            Root.Database.Table.PrimaryKey p = getInstanceOfPrimaryKey(databaseName, tableName, attributeName, attributeType);
+            Root.Database.Table.PrimaryKey p = getInstanceOfPrimaryKey(databaseName, tableName, attributeName);
             if (p != null) {
                 System.out.println("ERROR at creating the Primary Key!");
                 System.out.println("The Primary Key " + databaseName + "." + tableName + "." + attributeName + "already exists!");
             } else {
-                primaryKey = t.new PrimaryKey(t, attributeName, attributeType);
+                primaryKey = t.new PrimaryKey(t, attributeName);
             }
         } else {
             System.out.println("ERROR at creating the Primary Key!");
@@ -158,10 +157,10 @@ public class CatalogHandler {
         }
     }
 
-    public void deletePrimaryKey(String databaseName, String tableName, String attributeName, String attributeType) {
+    public void deletePrimaryKey(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = getInstanceOfTable(databaseName, tableName);
         if (t != null) {
-            Root.Database.Table.PrimaryKey p = getInstanceOfPrimaryKey(databaseName, tableName, attributeName, attributeType);
+            Root.Database.Table.PrimaryKey p = getInstanceOfPrimaryKey(databaseName, tableName, attributeName);
             if (p != null) {
                 t.primaryKeys.remove(p);
             } else {
@@ -264,13 +263,13 @@ public class CatalogHandler {
         String stringOfTables = "";
         Root.Database d = getInstanceOfDatabase(databaseName);
         if (d == null) {
-            return null;
+            return "";
         }
         for (Root.Database.Table t : d.tables) {
             stringOfTables += t.tableName + " ";
         }
         if (stringOfTables.equalsIgnoreCase("")) {
-            return null;
+            return "";
         }
         return stringOfTables;
     }
@@ -278,7 +277,7 @@ public class CatalogHandler {
     public String getStringOfTableFields(String databaseName, String tableName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
         if (t == null) {
-            return null;
+            return "";
         }
         String stringOfTableFields = "";
 
@@ -302,10 +301,10 @@ public class CatalogHandler {
         return null;
     }
 
-    public Root.Database.Table.PrimaryKey getInstanceOfPrimaryKey(String databaseName, String tableName, String attributeName, String attributeType) {
+    public Root.Database.Table.PrimaryKey getInstanceOfPrimaryKey(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
         for (Root.Database.Table.PrimaryKey p : t.primaryKeys) {
-            if (Objects.equals(p.pkName, attributeName) && Objects.equals(p.pkType, attributeType)) {
+            if (Objects.equals(p.pkName, attributeName)) {
                 return p;
             }
         }

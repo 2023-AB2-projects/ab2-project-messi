@@ -4,38 +4,30 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Arrays;
 
 public class ClientGUIDelete extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
-    private JPanel inputPanel;
-    private JLabel databaseNameLabel;
-    private JLabel tableNameLabel;
-    private JLabel keyValueLabel;
-
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
     private JTextField keyValueField;
-
     private JButton submitButton;
     private JButton backButton;
-    private String query;
 
     public ClientGUIDelete(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
 
-        databaseNameLabel = new JLabel("Database Name:");
-        tableNameLabel = new JLabel("Table Name:");
-        keyValueLabel = new JLabel("Key value:");
+        JLabel databaseNameLabel = new JLabel("Database Name:");
+        JLabel tableNameLabel = new JLabel("Table Name:");
+        JLabel keyValueLabel = new JLabel("Key value:");
 
         databaseComboBox = new MyComboBox(clientInterface.getDatabasesNames());
         databaseComboBox.setSelectedIndex(0);
-        tableComboBox = new MyComboBox((clientInterface.getTablesNames((String) databaseComboBox.getSelectedItem())));
+        tableComboBox = new MyComboBox((clientInterface.getTableNames((String) databaseComboBox.getSelectedItem())));
         tableComboBox.setSelectedIndex(0);
         keyValueField = new JTextField(20);
         keyValueField.setText("");
 
-        inputPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 5, 5));
         inputPanel.add(databaseNameLabel);
         inputPanel.add(databaseComboBox);
         inputPanel.add(tableNameLabel);
@@ -63,8 +55,8 @@ public class ClientGUIDelete extends JPanel implements ActionListener {
     }
 
     public void actionPerformed(ActionEvent e) {
-        if(e.getSource() == databaseComboBox){
-            tableComboBox.updateComboBox(clientInterface.getTablesNames((String) databaseComboBox.getSelectedItem()));
+        if (e.getSource() == databaseComboBox) {
+            tableComboBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
         }
         if (e.getSource() == submitButton) {
             if (keyValueField.getText().equals("")) {
@@ -72,7 +64,7 @@ public class ClientGUIDelete extends JPanel implements ActionListener {
             } else {
                 String databaseName = (String) databaseComboBox.getSelectedItem();
                 String tableName = (String) tableComboBox.getSelectedItem();
-                query = "DELETE FROM " + databaseName + "." + tableName + "\nWHERE key = " + keyValueField.getText() + ";";
+                String query = "DELETE FROM " + databaseName + "." + tableName + "\nWHERE key = " + keyValueField.getText() + ";";
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                 clientInterface.writeIntoSocket(query);
             }
@@ -81,12 +73,7 @@ public class ClientGUIDelete extends JPanel implements ActionListener {
         }
     }
 
-    public void updateDatabaseComboBox() {
-        databaseComboBox.removeAllItems();
-        String[] elements = clientInterface.getDatabasesNames().split(" ");
-        Arrays.sort(elements);
-        for (String element : elements) {
-            databaseComboBox.addItem(element);
-        }
+    public MyComboBox getDatabaseComboBox() {
+        return this.databaseComboBox;
     }
 }

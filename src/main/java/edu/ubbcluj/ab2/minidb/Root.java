@@ -1,10 +1,7 @@
 package edu.ubbcluj.ab2.minidb;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -130,18 +127,15 @@ public class Root {
 //            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
             public class PrimaryKey {
                 public String pkName;
-                public String pkType;
 
-                public PrimaryKey(Table table, String pkName, String pkType) {
+                public PrimaryKey(Table table, String pkName) {
                     this.pkName = pkName;
-                    this.pkType = pkType;
                     table.primaryKeys.add(this);
                 }
 
                 public JSONObject toJsonObject() {
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("pkName", pkName);
-                    jsonObject.put("pkType", pkType);
                     return jsonObject;
                 }
             }

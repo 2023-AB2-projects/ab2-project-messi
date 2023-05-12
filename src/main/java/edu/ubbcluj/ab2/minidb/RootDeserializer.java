@@ -32,8 +32,7 @@ public class RootDeserializer {
                 for (Object primaryKeyObject : primaryKeyArray) {
                     JSONObject primaryKeyJson = (JSONObject) primaryKeyObject;
                     String pkName = (String) primaryKeyJson.get("pkName");
-                    String pkType = (String) primaryKeyJson.get("pkType");
-                    Root.Database.Table.PrimaryKey primaryKey = table.new PrimaryKey(table, pkName, pkType);
+                    Root.Database.Table.PrimaryKey primaryKey = table.new PrimaryKey(table, pkName);
                 }
 
                 JSONArray foreignKeyArray = (JSONArray) tableJson.get("ForeignKeys");

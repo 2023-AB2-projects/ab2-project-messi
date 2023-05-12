@@ -7,17 +7,15 @@ import java.awt.event.ActionListener;
 
 public class ClientGUICreateDatabase extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
-    private JLabel jlabel;
     private JTextField textField;
     private JButton submitButton;
     private JButton backButton;
-    private String query;
 
     public ClientGUICreateDatabase(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
         this.setLayout(new GridLayout(2, 2));
 
-        jlabel = new JLabel("Database Name: ");
+        JLabel jlabel = new JLabel("Database Name: ");
         textField = new JTextField();
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
@@ -38,10 +36,10 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
             if (databaseName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "To create a database, ENTER a name.");
             } else {
-                query = "CREATE DATABASE " + databaseName + ";\n";
+                String query = "CREATE DATABASE " + databaseName + ";\n";
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
+                textField.setText("");
                 clientInterface.writeIntoSocket(query);
-
             }
         } else if (e.getSource() == backButton) {
             textField.setText("");
