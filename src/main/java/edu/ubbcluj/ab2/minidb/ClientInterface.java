@@ -89,7 +89,6 @@ public class ClientInterface extends JFrame implements ActionListener {
         cardPanel.add(insertPanel, "insert");
         cardPanel.add(deletePanel, "delete");
 
-
         layout.show(cardPanel, "menu");
         this.add(cardPanel);
         this.setVisible(true);

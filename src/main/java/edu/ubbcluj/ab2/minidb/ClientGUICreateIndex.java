@@ -6,9 +6,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class ClientGUICreateIndex extends JPanel implements ActionListener {
+    String sortOrderString;
     private ClientInterface clientInterface;
     private JTextField indexName;
     private MyComboBox fieldNameBox;
+    private JButton ascButton;
+    private JButton descButton;
+    private JCheckBox uniqueCheckbox;
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
     private JButton submitButton;
@@ -24,6 +28,7 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
 
         JLabel indexNameLabel = new JLabel("Index name: ");
         indexName = new JTextField();
+        // TODO: index name to dynamically change on fields/tables change, ex: tableName_field1_field2...
         JLabel indexOnLabel = new JLabel("ON");
         JLabel databaseNameLabel = new JLabel("Database name: ");
         databaseComboBox = new MyComboBox(clientInterface.getDatabasesNames());
@@ -34,6 +39,17 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
         JLabel fieldNameLabel = new JLabel("Field name(s): ");
         fieldNameBox = new MyComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()));
         fieldNameBox.setSelectedIndex(0);
+        JLabel sortOrderLabel = new JLabel("Sort order:");
+        ascButton = new JButton("ASC");
+        ascButton.setEnabled(false);
+        sortOrderString = ascButton.getText();
+        descButton = new JButton("DESC");
+        JLabel uniqueLabel = new JLabel("Unique:");
+        uniqueCheckbox = new JCheckBox();
+
+        JPanel orderPanel = new JPanel(new GridLayout(1, 2));
+        orderPanel.add(ascButton);
+        orderPanel.add(descButton);
 
         submitButton = new JButton("Submit");
         addButton = new JButton("Add");
@@ -43,7 +59,7 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
         queryAreaMessage.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(queryAreaMessage);
 
-        JPanel inputPanel = new JPanel(new GridLayout(5, 2, 5, 5));
+        JPanel inputPanel = new JPanel(new GridLayout(7, 2, 5, 5));
         inputPanel.add(indexNameLabel);
         inputPanel.add(indexName);
         inputPanel.add(indexOnLabel);
@@ -54,12 +70,18 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
         inputPanel.add(tableComboBox);
         inputPanel.add(fieldNameLabel);
         inputPanel.add(fieldNameBox);
+        inputPanel.add(sortOrderLabel);
+        inputPanel.add(orderPanel);
+        inputPanel.add(uniqueLabel);
+        inputPanel.add(uniqueCheckbox);
 
         databaseComboBox.addActionListener(this);
         tableComboBox.addActionListener(this);
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
         addButton.addActionListener(this);
+        ascButton.addActionListener(this);
+        descButton.addActionListener(this);
 
         JPanel buttonPanel = new JPanel(new FlowLayout());
         buttonPanel.add(addButton);
@@ -83,28 +105,33 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
             if (databaseComboBox.getSelectedItem() != null) {
                 tableComboBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
             }
-        }
-
-        if (e.getSource() == tableComboBox) {
+        } else if (e.getSource() == tableComboBox) {
             if (tableComboBox.getSelectedItem() != null) {
                 fieldNameBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()));
             }
-        }
-
-        if (e.getSource() == addButton) {
+        } else if (e.getSource() == ascButton) {
+            descButton.setEnabled(true);
+            ascButton.setEnabled(false);
+            sortOrderString = ascButton.getText();
+        } else if (e.getSource() == descButton) {
+            descButton.setEnabled(false);
+            ascButton.setEnabled(true);
+            sortOrderString = descButton.getText();
+        } else if (e.getSource() == addButton) {
             databaseComboBox.setEnabled(false);
             tableComboBox.setEnabled(false);
-            queryAreaMessage.append(fieldNameBox.getSelectedItem() + "\n");
+            uniqueCheckbox.setEnabled(false);
+            queryAreaMessage.append(fieldNameBox.getSelectedItem() + " " + sortOrderString + "\n");
             fieldNameBox.removeItem(fieldNameBox.getSelectedItem());
-        }
-
-        if (e.getSource() == submitButton) {
+            addButton.setEnabled(fieldNameBox.getSelectedItem() != null);
+        } else if (e.getSource() == submitButton) {
             if (indexName.getText().equals("")) {
                 JOptionPane.showMessageDialog(this, "Specify the name of the index!");
             } else {
                 String fields = queryAreaMessage.getText().replace("\n", ", ");
                 fields = fields.substring(0, fields.lastIndexOf(", "));
-                String query = "CREATE INDEX " + indexName.getText() + "\nON " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem() + "(" + fields + ");\n";
+                String unique = uniqueCheckbox.isSelected() ? " UNIQUE" : "";
+                String query = "CREATE" + unique + " INDEX " + indexName.getText() + "\nON " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem() + "(" + fields + ");\n";
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                 clientInterface.writeIntoSocket(query);
                 indexName.setText("");
@@ -112,13 +139,12 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
                 databaseComboBox.setEnabled(true);
                 tableComboBox.setEnabled(true);
             }
-        }
-
-        if (e.getSource() == backButton) {
+        } else if (e.getSource() == backButton) {
             indexName.setText("");
             queryAreaMessage.setText("");
             databaseComboBox.setEnabled(true);
             tableComboBox.setEnabled(true);
+            uniqueCheckbox.setEnabled(true);
             clientInterface.showMenu();
         }
 

@@ -6,12 +6,18 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Indexes;
 import org.bson.Document;
 import org.json.JSONObject;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
+import static com.mongodb.client.model.Indexes.ascending;
+import static com.mongodb.client.model.Indexes.descending;
 
 // TODO: ha leallitjuk a klienst akkor a server tovabb fusson es varja az uzeneteket
 
@@ -41,7 +47,6 @@ public class MyServer {
         String query = null;
         try {
             query = ((String) objectInputStream.readObject())
-                    .replaceFirst("\\(", "")
                     .replaceAll("\\(", " ")
                     .replaceAll("\\)", " ")
                     .replaceAll(";", "")
@@ -74,10 +79,17 @@ public class MyServer {
                         String[] string = message[2].split("\\.");
                         createTable(message, string[0], string[1]);
                     }
-                    case "INDEX" -> {
+                    case "UNIQUE" -> {      // CREATE UNIQUE INDEX
+
+                        String[] string = message[5].split("\\.");
+                        ArrayList<String> fields = new ArrayList<>(Arrays.asList(message).subList(6 , message.length));
+                        System.out.println(fields);
+                        createIndex(fields, string[0], string[1], message[3], true);
+                    }
+                    case "INDEX" -> {       // CREATE INDEX
                         String[] string = message[4].split("\\.");
-                        ArrayList<String> fields = new ArrayList<>(Arrays.asList(message).subList(5, message.length));
-                        createIndex(fields, string[0], string[1], message[3]);
+                        ArrayList<String> fields = new ArrayList<>(Arrays.asList(message).subList(5 , message.length));
+                        createIndex(fields, string[0], string[1], message[2], false);
                     }
                 }
             }
@@ -230,11 +242,30 @@ public class MyServer {
         }
     }
 
-    public void createIndex(ArrayList<String> fields, String databaseName, String tableName, String indexName) {
+    public void createIndex(ArrayList<String> fields, String databaseName, String tableName, String indexName, Boolean isUnique) {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> collection = database.getCollection(tableName);
         indexName = "Index_".concat(databaseName.concat("_")).concat(tableName.concat("_")).concat(indexName);
-        // TODO: json-be is!!! (vigyazat, lehet tobb field-re csinalni -> arrayben vagy valami ilyesmiben kene tarolni)
+        List<Document> indexList = new ArrayList<>();
+        for (int i = 0; i < fields.size(); i += 2) {
+            String field = fields.get(i);
+            String sortOrder = fields.get(i + 1);
+            Document indexSpec;
+            if (sortOrder.equals("ASC")) {
+                indexSpec = (Document) Indexes.ascending(field);
+            } else {
+                indexSpec = (Document) Indexes.descending(field);
+            }
+            if (isUnique) {
+                indexSpec.append("unique", true);
+            }
+            indexList.add(indexSpec);
+        }
+        System.out.println(indexList);
+        Document[] indexArray =  indexList.toArray(new Document[0]);
+
+        collection.createIndex(Indexes.compoundIndex(indexArray));
+        System.out.println("\nIndex created\n");
     }
 
     public void dropTable(String databaseName, String tableName) {
