@@ -4,12 +4,15 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 
 public class ClientGUIInsert extends JPanel implements ActionListener {
+    JPanel inputPanel;
+    ArrayList<JTextField> textFields;
+    ArrayList<JLabel> labels;
     private ClientInterface clientInterface;
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
-    private JTextField valuesField;
     private JButton addValuesButton;
     private JButton submitButton;
     private JButton backButton;
@@ -22,37 +25,43 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
 
         JLabel databaseNameLabel = new JLabel("Database Name:");
         JLabel tableNameLabel = new JLabel("Table Name:");
-        JLabel valuesLabel = new JLabel("Values:");
 
         databaseComboBox = new MyComboBox(clientInterface.getDatabasesNames());
         databaseComboBox.setSelectedIndex(0);
         tableComboBox = new MyComboBox((clientInterface.getTableNames((String) databaseComboBox.getSelectedItem())));
         tableComboBox.setSelectedIndex(0);
-        valuesField = new JTextField(20);
-        valuesField.setText("");
 
-
-        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        inputPanel = new JPanel(new GridLayout(0, 2, 5, 5));
         inputPanel.add(databaseNameLabel);
         inputPanel.add(databaseComboBox);
         inputPanel.add(tableNameLabel);
         inputPanel.add(tableComboBox);
-        inputPanel.add(valuesLabel);
-        inputPanel.add(valuesField);
+
+        textFields = new ArrayList<>();
+        labels = new ArrayList<>();
+        for (String attrName : clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()).split(" ")) {
+            JLabel attrLabel = new JLabel(attrName);
+            JTextField attrTextArea = new JTextField("");
+
+            textFields.add(attrTextArea);
+            labels.add(attrLabel);
+
+            inputPanel.add(attrLabel);
+            inputPanel.add(attrTextArea);
+        }
 
         valuesTextArea = new JTextArea(10, 40);
         valuesTextArea.setEditable(false);
         valuesTextArea.setText("");
         scrollPane = new JScrollPane(valuesTextArea);
 
-
         addValuesButton = new JButton("Add Values");
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
 
-
         addValuesButton.addActionListener(this);
         databaseComboBox.addActionListener(this);
+        tableComboBox.addActionListener(this);
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
 
@@ -77,23 +86,25 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == databaseComboBox) {
             tableComboBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
-        }
-        if (e.getSource() == addValuesButton) {
-            if (valuesField.getText().equals("")) {
-                JOptionPane.showMessageDialog(this, "Fill in the Values field first!");
-            } else {
-                if (valuesTextArea.getText().equals("")) {
-                    valuesTextArea.setText("(" + valuesField.getText() + ")");
-                    values += "(" + valuesField.getText() + ")";
+            updateTextFields();
+        } else if (e.getSource() == tableComboBox) {
+            updateTextFields();
+        } else if (e.getSource() == addValuesButton) {
+            for (JTextField jTextField : textFields) {
+                if (jTextField.getText().equals("")) {
+                    JOptionPane.showMessageDialog(this, "Fill in the Values field first!");
                 } else {
-                    valuesTextArea.append("\n(" + valuesField.getText() + ")");
-                    values += "\n                (" + valuesField.getText() + ")";
+                    if (valuesTextArea.getText().equals("")) {
+                        valuesTextArea.setText("(" + jTextField.getText() + ")");
+                        values += "(" + jTextField.getText() + ")";
+                    } else {
+                        valuesTextArea.append("\n(" + jTextField.getText() + ")");
+                        values += "\n (" + jTextField.getText() + ")";
+                    }
+                    jTextField.setText("");
                 }
-                valuesField.setText("");
             }
-
-        }
-        if (e.getSource() == submitButton) {
+        } else if (e.getSource() == submitButton) {
             if (valuesTextArea.getText().equals("")) {
                 JOptionPane.showMessageDialog(this, "Unable to perform insertion, if values are not given.");
             } else {
@@ -111,7 +122,35 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
             values = "";
         }
     }
-    public MyComboBox getDatabaseComboBox(){
+
+    public void updateTextFields() {
+        for (JTextField textField : textFields) {
+            inputPanel.remove(textField);
+        }
+        textFields.clear();
+
+        for(JLabel label : labels) {
+            inputPanel.remove(label);
+        }
+        labels.clear();
+
+        // Add new text fields
+        for (String attrName : clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()).split(" ")) {
+            JLabel attrLabel = new JLabel(attrName);
+            JTextField attrTextArea = new JTextField("");
+
+            textFields.add(attrTextArea);
+            labels.add(attrLabel);
+
+            inputPanel.add(attrLabel);
+            inputPanel.add(attrTextArea);
+        }
+
+        inputPanel.revalidate();
+        inputPanel.repaint();
+    }
+
+    public MyComboBox getDatabaseComboBox() {
         return this.databaseComboBox;
     }
 }

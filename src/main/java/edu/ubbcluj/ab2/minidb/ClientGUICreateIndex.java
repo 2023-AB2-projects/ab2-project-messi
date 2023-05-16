@@ -130,7 +130,8 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
             } else {
                 String fields = queryAreaMessage.getText().replace("\n", ", ");
                 fields = fields.substring(0, fields.lastIndexOf(", "));
-                String unique = uniqueCheckbox.isSelected() ? " UNIQUE" : "";
+//                String unique = uniqueCheckbox.isSelected() ? " UNIQUE" : "";
+                String unique = "";
                 String query = "CREATE" + unique + " INDEX " + indexName.getText() + "\nON " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem() + "(" + fields + ");\n";
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                 clientInterface.writeIntoSocket(query);

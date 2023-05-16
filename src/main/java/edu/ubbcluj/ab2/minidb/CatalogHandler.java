@@ -72,7 +72,7 @@ public class CatalogHandler {
             root.databases.remove(d);
         } else {
             System.out.println("ERROR at dropping the Database!");
-            System.out.println("The Database" + databaseName + " does not exist!");
+            System.out.println("The Database" + databaseName + " does not exist!\n");
         }
     }
 
@@ -88,7 +88,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at creating the Table!");
-            System.out.println("The Database " + databaseName + " does not exist!");
+            System.out.println("The Database " + databaseName + " does not exist!\n");
         }
 
     }
@@ -101,11 +101,11 @@ public class CatalogHandler {
                 d.tables.remove(t);
             } else {
                 System.out.println("ERROR at dropping the Table!");
-                System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+                System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
             }
         } else {
             System.out.println("ERROR at dropping the Table!");
-            System.out.println("The Database " + databaseName + " does not exist!");
+            System.out.println("The Database " + databaseName + " does not exist!\n");
         }
     }
 
@@ -121,7 +121,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at creating the Attribute!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
 
@@ -133,11 +133,11 @@ public class CatalogHandler {
                 t.attributes.remove(a);
             } else {
                 System.out.println("ERROR at deleting the Attribute!");
-                System.out.println("The Attribute " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+                System.out.println("The Attribute " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
             }
         } else {
             System.out.println("ERROR at deleting the Attribute!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
 
@@ -153,7 +153,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at creating the Primary Key!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
 
@@ -165,11 +165,11 @@ public class CatalogHandler {
                 t.primaryKeys.remove(p);
             } else {
                 System.out.println("ERROR at deleting the Primary Key!");
-                System.out.println("The Primary Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+                System.out.println("The Primary Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
             }
         } else {
             System.out.println("ERROR at deleting the Primary Key!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
 
@@ -186,7 +186,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at creating the Foreign Key!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
 
@@ -198,11 +198,11 @@ public class CatalogHandler {
                 t.foreignKeys.remove(f);
             } else {
                 System.out.println("ERROR at deleting the Foreign Key!");
-                System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+                System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
             }
         } else {
             System.out.println("ERROR at deleting the Foreign Key!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
 
@@ -218,7 +218,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at creating the Reference!");
-            System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+            System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
         }
     }
 
@@ -230,11 +230,11 @@ public class CatalogHandler {
                 f.references.remove(r);
             } else {
                 System.out.println("ERROR at deleting the Reference!");
-                System.out.println("The Reference " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+                System.out.println("The Reference " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
             }
         } else {
             System.out.println("ERROR at deleting the Reference!");
-            System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+            System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
         }
     }
 
@@ -360,7 +360,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the number of Tables in a specified Database!");
-            System.out.println("The Database " + databaseName + " does not exist!");
+            System.out.println("The Database " + databaseName + " does not exist!\n");
             return -1;
         }
         return nrOfTables;
@@ -376,7 +376,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the number of Attributes in a specified Table!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
             return -1;
         }
         return nrOfAttributes;
@@ -392,7 +392,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the number of Primary Keys in a specified Table!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
             return -1;
         }
         return nrOfPrimaryKeys;
@@ -408,7 +408,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the number of Foreign Keys in a specified Table!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
             return -1;
         }
         return nrOfForeignKeys;
@@ -424,7 +424,7 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the number of Unique Keys in a specified Table!");
-            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
             return -1;
         }
         return nrOfUniqueKeys;
@@ -440,9 +440,28 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the number of References to a specified Foreign Key!");
-            System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!");
+            System.out.println("The Foreign Key " + databaseName + "." + tableName + "." + attributeName + " does not exist!\n");
             return -1;
         }
         return nrOfReferences;
+    }
+
+    // returns the index of the given attribute, ex: json file attribute order: id, surname, lastname -> the index of the attribute surname is 1,
+    public int getIndexOfAttribute(String databaseName, String tableName, String attributeName) {
+        Root.Database.Table t = getInstanceOfTable(databaseName, tableName);
+        int index = 0;
+        if (t != null) {
+            for (Root.Database.Table.Attribute a : t.attributes) {
+                if(Objects.equals(a.attrName, attributeName)) {
+                    break;
+                }
+                index++;
+            }
+        } else {
+            System.out.println("ERROR at getting the index of Attributes in the specified Table!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
+            return -1;
+        }
+        return index;
     }
 }
