@@ -5,20 +5,17 @@ import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
-
-import javax.print.Doc;
 
 // TODO: ha leallitjuk a klienst akkor a server tovabb fusson es varja az uzeneteket
 
@@ -83,10 +80,9 @@ public class MyServer {
                     }
                     case "INDEX" -> {       // CREATE INDEX
                         String[] string = message[4].split("\\.");
-//                        ArrayList<String> fields = new ArrayList<>(Arrays.asList(message).subList(5, message.length));
-                        // TODO: megcsinalni tobb fields-re
-                        String field = message[5];
-                        createIndex(field, string[0], string[1], message[2]);
+                        ArrayList<String> fields = new ArrayList<>(Arrays.asList(message).subList(5, message.length));
+//                        String field = message[5];
+                        createIndex(String.join("#", fields), string[0], string[1], message[2]);
                     }
                 }
             }
@@ -117,7 +113,7 @@ public class MyServer {
             // if the client requests the nam of the fields of one table from a specified database
             case "GETFIELDS" -> {
                 if (message.length == 3) {
-                    writeIntoSocket(catalogHandler.getStringOfTableFields(message[1], message[2]));
+                    writeIntoSocket(catalogHandler.getStringOfAttributes(message[1], message[2]));
 
                 } else {
                     writeIntoSocket("");
@@ -212,6 +208,7 @@ public class MyServer {
         }
     }
 
+    // primary keys are in the first place guaranteed in attributes no matter the order they are in message
     public void createTable(String[] message, String databaseName, String tableName) {
         catalogHandler.createTable(databaseName, tableName);
         try {
@@ -222,6 +219,9 @@ public class MyServer {
             e.printStackTrace();
         }
 
+        ArrayList<String[]> attributesArray = new ArrayList<>();
+        ArrayList<String[]> primaryKeysArray = new ArrayList<>();
+        ArrayList<String[]> foreignKeysArray = new ArrayList<>();
         int i = 3;
         while (i < message.length && !message[i].equals("CONSTRAINT")) {
             String attrName = message[i++];
@@ -229,29 +229,53 @@ public class MyServer {
             if (i >= message.length) {
                 break;
             }
-            catalogHandler.createAttribute(databaseName, tableName, attrName, attrType);
+            String[] elements = {attrName, attrType};
+            attributesArray.add(elements);
         }
 
-        // CONSTRAINTS
-        while (i < message.length) {
-            i += 2;
-            switch (message[i]) {
-                case "FOREIGN" -> { // Current column is Foreign Key
-                    String attrName = message[i + 2];
-                    i += 3; // "REFERENCES"
-                    String refTableName = message[i++];
-                    String refAttrName = message[i++];
-                    catalogHandler.createForeignKey(databaseName, tableName, attrName);
-                    catalogHandler.createReference(databaseName, tableName, attrName, refTableName, refAttrName);
-                }
-                case "PRIMARY" -> { // Current column is the Primary Key for the table
-                    i += 2;
-                    while (i < message.length && !message[i].equals("CONSTRAINT")) {
-                        catalogHandler.createPrimaryKey(databaseName, tableName, message[i]);
-                        i++;
+        try {
+            while (i < message.length) {
+                i += 1; // CONSTRAINTS
+                String indexName = message[i++];
+                switch (message[i]) {
+                    case "FOREIGN" -> { // Current column is Foreign Key
+                        i += 2; // FOREIGN KEY
+                        String attrName = message[i++];
+                        i += 1; // REFERENCES
+                        String refTableName = message[i++];
+                        String refAttrName = message[i++];
+                        String[] elements = {attrName, refTableName, refAttrName, indexName};
+                        foreignKeysArray.add(elements);
+                    }
+                    case "PRIMARY" -> { // Current column is the Primary Key for the table
+                        i += 2; // PRIMARY KEY
+                        while (i < message.length && !message[i].equals("CONSTRAINT")) {
+                            String pkName = message[i++];
+                            String[] elements = {pkName};
+                            primaryKeysArray.add(elements);
+                        }
                     }
                 }
             }
+            primaryKeysArray.forEach(primaryKey -> catalogHandler.createPrimaryKey(databaseName, tableName, primaryKey[0]));
+
+            attributesArray.removeIf(attribute -> {
+                boolean isPrimaryKey = primaryKeysArray.stream().anyMatch(primaryKey -> Objects.equals(attribute[0], primaryKey[0]));
+                if (isPrimaryKey) {
+                    catalogHandler.createAttribute(databaseName, tableName, attribute[0], attribute[1]);
+                }
+                return isPrimaryKey;
+            });
+            attributesArray.forEach(attribute -> catalogHandler.createAttribute(databaseName, tableName, attribute[0], attribute[1]));
+
+            foreignKeysArray.forEach(foreignKey -> {
+                // foreignKey[0] = attrName; [1] = refTableName; [2] = refAttrName; [3] = indexName;
+                catalogHandler.createForeignKey(databaseName, tableName, foreignKey[0]);
+                catalogHandler.createReference(databaseName, tableName, foreignKey[0], foreignKey[1], foreignKey[2]);
+                createIndex(foreignKey[0], databaseName, tableName, "FK");
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -266,36 +290,113 @@ public class MyServer {
         }
     }
 
-    public void createIndex(String fieldName, String databaseName, String tableName, String indexName) {
+    // primaryKey into indexValue vegere (insert)
+    // value - table values
+    //
+    public void updateIndex(String primaryKey, String value, String databaseName, String tableName, String operation) {
+        try {
+            MongoDatabase database = mongoClient.getDatabase(databaseName);
+            MongoCollection<Document> table = database.getCollection(tableName);
+
+            String indexNames = catalogHandler.getIndexNames(databaseName);
+            Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
+                String fields = catalogHandler.getCertainIndexFields(databaseName, indexName);
+                if (Objects.equals(fields, "")) {
+                    return;
+                }
+                int[] indexOfFields = Arrays.stream(fields.split("#"))
+                        .mapToInt(field -> (catalogHandler.getIndexOfAttribute(databaseName, tableName, field) - catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName)))
+                        .toArray();
+
+                MongoCollection<Document> indexTable = database.getCollection(indexName);
+                String[] values = value.split("#");
+                String[] id = Arrays.stream(indexOfFields)
+                        .mapToObj(index -> values[index])
+                        .toArray(String[]::new);
+                String joinedId = String.join("#", id);
+
+                Document document = indexTable.find(Filters.eq("_id", joinedId)).first();
+                String newValue = "";
+                if (operation.equals("insert")) {
+                    if (document != null) {
+                        String existingValue = document.getString("value");
+                        newValue = existingValue.isEmpty() ? primaryKey : existingValue + "#" + primaryKey;
+                    } else {
+                        indexTable.insertOne(new Document().append("_id", joinedId).append("value", primaryKey));
+                        return;
+                    }
+                } else if (operation.equals("delete")) {
+                    if (document != null) {
+                        String existingValue = document.getString("value");
+                        newValue = existingValue.replace(primaryKey, "").replaceAll("##", "#");
+                    }
+                }
+                if (!newValue.equals("")) {
+                    indexTable.findOneAndUpdate(Filters.eq("_id", joinedId), Updates.set("value", newValue));
+                } else {
+                    indexTable.findOneAndDelete(Filters.eq("_id", joinedId));
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void createIndex(String fields, String databaseName, String tableName, String indexName) {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> collection = database.getCollection(tableName);
-        indexName = indexName.concat("_").concat(databaseName).concat("_").concat(tableName);
+        indexName = indexName.concat("_").concat(databaseName).concat("_").concat(tableName).concat("_").concat(fields);
 
-        if (catalogHandler.getInstanceOfTable(databaseName, indexName) != null) {
-            System.out.println("An error occured while creating the index. The index already exist.\n");
+        if (catalogHandler.existsIndex(databaseName, indexName)) {
+            System.out.println("An error occurred while creating the index. The index already exist.\n");
             return;
         }
+        catalogHandler.createIndex(databaseName, indexName, fields);
 
-        // TODO: JSON file-ba is elmenteni ha szukseges az indexTable-t
+        System.out.println("\nindexName: " + indexName + "\n");
         database.createCollection(indexName);
         MongoCollection<Document> indexTableName = database.getCollection(indexName);
 
-        int nrOfPrimaryKey = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
-        int indexOfField = catalogHandler.getIndexOfAttribute(databaseName, tableName, fieldName);
-        int i = indexOfField - nrOfPrimaryKey;
-
-        HashMap<String, ArrayList<String>> map = new HashMap<>();
-        for (Document document : database.getCollection(tableName).find()) {
-            String indexKey = document.getString("value").split("#")[i];
-            ArrayList<String> indexValue = (map.get(indexKey) == null) ? indexValue = new ArrayList<>() : map.get(indexKey);
-            indexValue.add(document.getString("_id"));
-            System.out.println(indexKey);
-            System.out.println(indexValue);
-            map.put(indexKey, indexValue);
+        int[] indexOfFields = Arrays.stream(fields.split("#"))
+                .mapToInt(field -> (catalogHandler.getIndexOfAttribute(databaseName, tableName, field) - catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName)))
+                .toArray();
+        for (int indexOfField : indexOfFields) {
+            if (indexOfField == -1) {
+                System.out.println("An error occurred while finding the index of the " + indexOfField + " attribute in " + fileName + "\n");
+                return;
+            }
         }
 
-        map.forEach((key, value) -> indexTableName.insertOne(new Document().append("_id", key).append("value", value.stream().map(Object::toString).collect(Collectors.joining("#")))));
-        System.out.println("\nIndex created\n");
+        HashMap<String, ArrayList<String>> hashMap = new HashMap<>();
+        for (Document document : database.getCollection(tableName).find()) {
+            String[] values = document.getString("value").split("#");
+            String[] keyNames = Arrays.stream(indexOfFields)
+                    .mapToObj(index -> values[index])
+                    .toArray(String[]::new);
+            String joinedKey = String.join("#", keyNames);
+            ArrayList<String> indexValue = (hashMap.get(joinedKey) == null) ? new ArrayList<>() : hashMap.get(joinedKey);
+            indexValue.add(document.getString("_id"));
+            hashMap.put(joinedKey, indexValue);
+        }
+
+        hashMap.forEach((key, value) -> indexTableName.insertOne(new Document().append("_id", key).append("value", value.stream().map(Object::toString).collect(Collectors.joining("#")))));
+    }
+
+    private AtomicBoolean existsIndex(String id, String databaseName, String tableName) {
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
+        MongoCollection<Document> table = database.getCollection(tableName);
+
+        AtomicBoolean foundIndex = new AtomicBoolean(false);
+
+        String indexNames = catalogHandler.getIndexNames(databaseName);
+        Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
+            MongoCollection<Document> indexTable = database.getCollection(indexName);
+            Document document = indexTable.find(Filters.eq("_id", id)).first();
+            if (document != null) {
+                foundIndex.set(true);
+            }
+        });
+        return foundIndex;
     }
 
 
@@ -306,29 +407,39 @@ public class MyServer {
 
             int nr = catalogHandler.getNumberOfAttributes(databaseName, tableName);
             if (nr != message.length - 4) {
-                System.out.println("Did not complete insertion: Column name or number of supplied values does not match table definition\n");
+                System.out.println("An error occurred while inserting the " + tableName + " table in " + databaseName + " database.\n");
                 return;
             }
 
-            String value = "", id;
-            int i = 4, nrPK = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
+            int nrPK = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
+            int i = 4;
             nr -= nrPK;
+
             while (i < message.length) {
-                id = message[i];
+                String id = message[i];
                 for (int j = 1; j < nrPK; j++) {
                     id += "#" + message[i + j];
                 }
                 i += nrPK;
 
+                // key - fkattributes
+                // value - id
                 if (i < message.length) {
-                    value += message[i];
+                    String value = message[i];
                     for (int j = 1; j < nr; j++) {
-                        value += "#" + (message[i + j]);
+                        value += "#" + message[i + j];
                     }
                     i += nr;
+
+                    String stringOfAttributes = catalogHandler.getStringOfAttributes(databaseName, tableName);
+                    String stringOfForeignKeys = catalogHandler.getStringOfForeignKeys(databaseName, tableName);
+                    if (stringOfForeignKeys != "") {
+                        updateIndex(id, value, databaseName, tableName, "insert");
+                    }
+
+                    collection.insertOne(new Document("_id", id).append("value", value));
+                    System.out.println("Successfully inserted into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
                 }
-                collection.insertOne(new Document().append("_id", id).append("value", value));
-                System.out.println("Succesfully insertedd into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
             }
         } catch (Exception e) {
             System.out.println("An error occurred while inserting into the " + databaseName + "." + tableName + " table in MongoDB\n");
@@ -336,14 +447,19 @@ public class MyServer {
         }
     }
 
-    public void delete(String databaseName, String tableName, String condition) {
+    public void delete(String databaseName, String tableName, String id) {
         try {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
             MongoCollection<Document> table = database.getCollection(tableName);
-            Document doc = table.find(Filters.eq("_id", condition)).first();
-            System.out.println(condition);
+            Document doc = table.find(Filters.eq("_id", id)).first();
             if (doc != null) {
-                table.deleteOne(doc);
+                AtomicBoolean atomicBoolean = existsIndex(id, databaseName, tableName);
+                if (atomicBoolean.get()) {
+                    System.out.println("The document with id: " + id + " can not be deleted because it is referenced by a foreign key constraint in another table.");
+                } else {
+                    System.out.println("Successfully deleted the document with id: " + id + " from the " + databaseName + "." + tableName + " table.");
+                    table.deleteOne(doc);
+                }
             } else {
                 System.out.println("There is no data with such ID. 0 rows deleted\n");
             }

@@ -13,7 +13,19 @@ public class RootDeserializer {
             JSONObject databaseJson = (JSONObject) databaseObject;
             String databaseName = (String) databaseJson.get("Database");
             Root.Database database = root.new Database(root, databaseName);
-            JSONArray tableArray = (JSONArray) databaseJson.get("Tables");
+            JSONArray indexArray = databaseJson.getJSONArray("Indexes");
+            JSONArray tableArray = databaseJson.getJSONArray("Tables");
+
+            for (int j = 0; j < indexArray.length(); j++) {
+                JSONObject indexJson = indexArray.getJSONObject(j);
+                String indexName = indexJson.getString("indexName");
+                JSONArray fieldsArray = indexJson.getJSONArray("fields");
+                String[] fields = new String[fieldsArray.length()];
+                for (int k = 0; k < fieldsArray.length(); k++) {
+                    fields[k] = fieldsArray.getString(k);
+                }
+                Root.Database.Index index = database.new Index(database, indexName, fields);
+            }
 
             for (Object tableObject : tableArray) {
                 JSONObject tableJson = (JSONObject) tableObject;

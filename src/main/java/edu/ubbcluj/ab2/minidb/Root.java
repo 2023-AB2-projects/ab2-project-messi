@@ -2,6 +2,7 @@ package edu.ubbcluj.ab2.minidb;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,13 +12,6 @@ public class Root {
 
     public Root() {
         databases = new ArrayList<>();
-    }
-
-    public void listDatabses(){
-        System.out.println("Databases names:");
-        for(Database database : databases) {
-            System.out.println(database);
-        }
     }
 
     public JSONObject toJsonObject() {
@@ -34,12 +28,14 @@ public class Root {
 
     //    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public class Database {
-        public List<Table> tables;
         public String databaseName;
+        public List<Index> indexes;
+        public List<Table> tables;
 
         public Database(Root root, String databaseName) {
             this.databaseName = databaseName;
-            tables = new ArrayList<>();
+            this.indexes = new ArrayList<>();
+            this.tables = new ArrayList<>();
             root.databases.add(this);
         }
 
@@ -47,16 +43,46 @@ public class Root {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("Database", databaseName);
 
-            JSONArray jsonArray = new JSONArray();
-            for (Table table : tables) {
-                jsonArray.put(table.toJsonObject());
+            JSONArray jsonArray1 = new JSONArray();
+            for (Index index : indexes) {
+                jsonArray1.put(index.toJsonObject());
             }
-            jsonObject.put("Tables", jsonArray);
+            jsonObject.put("Indexes", jsonArray1);
+
+            JSONArray jsonArray2 = new JSONArray();
+            for (Table table : tables) {
+                jsonArray2.put(table.toJsonObject());
+            }
+            jsonObject.put("Tables", jsonArray2);
 
             return jsonObject;
         }
 
-//        @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+        public class Index {
+            public String  indexName;
+            public String[] fields;
+
+            public Index(Database database, String indexName, String[] fields) {
+                this.indexName = indexName;
+                this.fields = fields;
+                database.indexes.add(this);
+            }
+
+            public JSONObject toJsonObject() {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("indexName", indexName);
+
+                JSONArray jsonArray = new JSONArray();
+                for (String field: fields) {
+                    jsonArray.put(field);
+                }
+                jsonObject.put("fields", jsonArray);
+
+                return jsonObject;
+            }
+        }
+
+        //        @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
         public class Table {
             public String tableName;
             public List<Attribute> attributes;
@@ -105,7 +131,7 @@ public class Root {
                 return jsonObject;
             }
 
-//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            //            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
             public class Attribute {
                 public String attrName;
                 public String attrType;
@@ -124,7 +150,7 @@ public class Root {
                 }
             }
 
-//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            //            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
             public class PrimaryKey {
                 public String pkName;
 
@@ -142,7 +168,7 @@ public class Root {
 
             // indexfile
 
-//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            //            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
             public class ForeignKey {
                 public String fkName;
                 public List<Reference> references;
@@ -166,7 +192,7 @@ public class Root {
                     return jsonObject;
                 }
 
-//                @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+                //                @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
                 public class Reference {
                     public String tableName;
                     public String attrName;
@@ -186,7 +212,7 @@ public class Root {
                 }
             }
 
-//            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+            //            @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
             public class UniqueKey {
                 public String uqAttrName;
 

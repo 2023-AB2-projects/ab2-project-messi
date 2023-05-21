@@ -114,10 +114,12 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == addColumnButton) {
+            String tableName = tableNameField.getText();
             String columnName = columnNameField.getText();
             String columnType = (String) columnTypeBox.getSelectedItem();
-
-            if (columnName.isEmpty()) {
+            if (tableName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter a table name.");
+            } else if (columnName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter a column name.");
             } else {
                 assert columnType != null;
@@ -139,10 +141,10 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
                     if (fkCheckBox.isSelected()) {
                         if (foreignKey.equals("")) {
-                            foreignKey += "CONSTRAINT FK_" + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
+                            foreignKey += "CONSTRAINT FK_" + tableName + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
 
                         } else {
-                            foreignKey += ",\nCONSTRAINT FK_" + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
+                            foreignKey += ",\nCONSTRAINT FK_" + tableName + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
                         }
 
                     }
@@ -158,6 +160,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             }
         } else if (e.getSource() == createTableButton) {
             String tableName = tableNameField.getText();
+            String columnName = columnNameField.getText();
             if (queryAreaMessage.getText().equals("")) {
                 if (tableName.equals("")) {
                     JOptionPane.showMessageDialog(this, "To create a table, insert the required data.");
@@ -169,11 +172,10 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                     JOptionPane.showMessageDialog(this, "Declare a primary key to the " + tableName + " table.");
                 } else {
                     String query;
-                    if(foreignKey.equals("")){
-                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK PRIMARY KEY(" + primaryKey + ")\n);";
-                    }
-                    else{
-                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK PRIMARY KEY(" + primaryKey + ")\n" + foreignKey + "\n);";
+                    if (foreignKey.equals("")) {
+                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + columnName + " PRIMARY KEY(" + primaryKey + ")\n);";
+                    } else {
+                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + columnName + " PRIMARY KEY(" + primaryKey + ")\n" + foreignKey + "\n);";
                     }
                     JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                     clientInterface.writeIntoSocket(query);

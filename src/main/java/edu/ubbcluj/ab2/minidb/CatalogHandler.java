@@ -6,12 +6,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class CatalogHandler {
     private Root root;
     private Root.Database database;
+    private Root.Database.Index index;
     private Root.Database.Table table;
     private Root.Database.Table.Attribute attribute;
     private Root.Database.Table.PrimaryKey primaryKey;
@@ -42,7 +45,7 @@ public class CatalogHandler {
             file.append(root.toJsonObject().toString());
             file.close();
         } catch (IOException e) {
-            System.out.println("ERROR at writing to " + fileName + " file!");
+            System.out.println("An error occurred while writing to " + fileName + " file!\n");
             throw new RuntimeException(e);
         }
     }
@@ -60,7 +63,7 @@ public class CatalogHandler {
     public void createDatabase(String databaseName) {
         Root.Database d = getInstanceOfDatabase(databaseName);
         if (d != null) {
-            System.out.println("\nThe Database " + databaseName + " already exists!");
+            System.out.println("The Database " + databaseName + " already exists!\n");
         } else {
             database = root.new Database(root, databaseName);
         }
@@ -71,8 +74,99 @@ public class CatalogHandler {
         if (d != null) {
             root.databases.remove(d);
         } else {
-            System.out.println("ERROR at dropping the Database!");
-            System.out.println("The Database" + databaseName + " does not exist!\n");
+            System.out.println("The Database " + databaseName + " does not exist!\n");
+        }
+    }
+
+//    public void createIndex(String databaseName, String indexName, String fields) {
+//        Root.Database d = this.getInstanceOfDatabase(databaseName);
+//        if (d == null) {
+//            System.out.println("The database " + databaseName + " does not exist\n");
+//            return;
+//        }
+//        Root.Database.Index i = this.getInstanceOfIndex(databaseName, indexName);
+//        if (i != null) {
+//            System.out.println("The index " + indexName + " already exists\n");
+//            return;
+//        }
+//        index = d.new Index(d, indexName, fields.split("#"));
+//    }
+
+    public void createIndex(String databaseName, String indexName, String fields) {
+        Root.Database d = this.getInstanceOfDatabase(databaseName);
+        if (d != null) {
+            Root.Database.Index i = getInstanceOfIndex(databaseName, indexName);
+            if (i != null) {
+                System.out.println("ERROR at creating the Index!");
+                System.out.println("The Index " + indexName + " already exists!");
+            } else {
+                String[] aux =  fields.split(" ");
+                index = d.new Index(d, indexName, aux);
+            }
+        } else {
+            System.out.println("ERROR at creating the Table!");
+            System.out.println("The Database " + databaseName + " does not exist!\n");
+        }
+
+    }
+
+    public boolean existsIndex(String databaseName, String indexName) {
+        Root.Database d = getInstanceOfDatabase(databaseName);
+        if (d == null) {
+            System.out.println("The Database " + databaseName + " does not exist!\n");
+            return false;
+        }
+        return getInstanceOfIndex(databaseName, indexName) != null;
+    }
+
+    public String getIndexNames(String databaseName) {
+        Root.Database d = getInstanceOfDatabase(databaseName);
+        if (d == null) {
+            System.out.println("The Database " + databaseName + " does not exist!\n");
+            return "";
+        }
+        String indexNames = "";
+        for (Root.Database.Index i : d.indexes) {
+            indexNames += i.indexName + " ";
+        }
+        return indexNames;
+    }
+
+    // return: "field11#field12 field21#field22#field23..."
+    public String getIndexFields(String databaseName) {
+        Root.Database d = getInstanceOfDatabase(databaseName);
+        if (d == null) {
+            System.out.println("The Database " + databaseName + " does not exist!\n");
+            return "";
+        }
+        StringBuilder indexFields = new StringBuilder();
+        for (Root.Database.Index i : d.indexes) {
+            indexFields.append(String.join("#", i.fields)).append(" ");
+        }
+        return indexFields.toString();
+    }
+
+    public String getCertainIndexFields(String databaseName, String indexName) {
+        Root.Database d = this.getInstanceOfDatabase(databaseName);
+        if (d == null) {
+            System.out.println("The database " + databaseName + " does not exist\n");
+            return "";
+        }
+        Root.Database.Index i = this.getInstanceOfIndex(databaseName, indexName);
+        if (i == null) {
+            System.out.println("The certain index " + indexName + " does not exist\n");
+            return "";
+        }
+        return String.join("#", i.fields);
+    }
+
+    public void removeIndex(String databaseName, String indexName) {
+        Root.Database d = getInstanceOfDatabase(databaseName);
+        if (d != null) {
+            d.indexes.remove(indexName);
+        } else {
+            System.out.println("An error occurred while removing the " + indexName + " index from " + databaseName + " database.\n");
+            System.out.println("The Database " + databaseName + " does not exist!\n");
         }
     }
 
@@ -90,7 +184,6 @@ public class CatalogHandler {
             System.out.println("ERROR at creating the Table!");
             System.out.println("The Database " + databaseName + " does not exist!\n");
         }
-
     }
 
     public void dropTable(String databaseName, String tableName) {
@@ -259,6 +352,20 @@ public class CatalogHandler {
         return null;
     }
 
+    private Root.Database.Index getInstanceOfIndex(String databaseName, String indexName) {
+        Root.Database d = this.getInstanceOfDatabase(databaseName);
+        if (d == null) {
+            System.out.println("An error occured while creating the " + indexName + " index in " + databaseName + " database\n");
+            return null;
+        }
+        for (Root.Database.Index i : d.indexes) {
+            if (Objects.equals(i.indexName, indexName)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
     public String getStringOfTables(String databaseName) {
         String stringOfTables = "";
         Root.Database d = getInstanceOfDatabase(databaseName);
@@ -274,7 +381,7 @@ public class CatalogHandler {
         return stringOfTables;
     }
 
-    public String getStringOfTableFields(String databaseName, String tableName) {
+    public String getStringOfAttributes(String databaseName, String tableName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
         if (t == null) {
             return "";
@@ -290,7 +397,7 @@ public class CatalogHandler {
 
     public Root.Database.Table getInstanceOfTable(String databaseName, String tableName) {
         Root.Database d = this.getInstanceOfDatabase(databaseName);
-        if(d == null){
+        if (d == null) {
             return null;
         }
         for (Root.Database.Table t : d.tables) {
@@ -329,6 +436,11 @@ public class CatalogHandler {
             }
         }
         return null;
+    }
+
+    public String getStringOfForeignKeys(String databaseName, String tableName) {
+        Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
+        return (t == null || t.foreignKeys.isEmpty()) ? "" : t.foreignKeys.stream().map(f -> f.fkName).collect(Collectors.joining(" "));
     }
 
     public Root.Database.Table.ForeignKey.Reference getInstanceOfReference(String databaseName, String tableName, String attributeName, String refTableName, String refAttributeName) {
@@ -449,19 +561,18 @@ public class CatalogHandler {
     // returns the index of the given attribute, ex: json file attribute order: id, surname, lastname -> the index of the attribute surname is 1,
     public int getIndexOfAttribute(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = getInstanceOfTable(databaseName, tableName);
-        int index = 0;
+        int indexOfAttribute = 0;
         if (t != null) {
             for (Root.Database.Table.Attribute a : t.attributes) {
-                if(Objects.equals(a.attrName, attributeName)) {
-                    break;
+                if (Objects.equals(a.attrName, attributeName)) {
+                    return indexOfAttribute;
                 }
-                index++;
+                indexOfAttribute++;
             }
         } else {
             System.out.println("ERROR at getting the index of Attributes in the specified Table!");
             System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
-            return -1;
         }
-        return index;
+        return -1;
     }
 }
