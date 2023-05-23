@@ -90,20 +90,33 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
         } else if (e.getSource() == tableComboBox) {
             updateTextFields();
         } else if (e.getSource() == addValuesButton) {
-            for (JTextField jTextField : textFields) {
+            if (valuesTextArea.getText().equals("")) {
+                valuesTextArea.setText("(");
+                values += "(";
+            } else {
+                valuesTextArea.setText("\n(");
+                values += "\n(";
+            }
+            int lastIndex = textFields.size() - 1;
+            for (int i = 0; i < textFields.size(); i++) {
+                JTextField jTextField = textFields.get(i);
+                boolean isLast = (i == lastIndex);
+
                 if (jTextField.getText().equals("")) {
                     JOptionPane.showMessageDialog(this, "Fill in the Values field first!");
                 } else {
-                    if (valuesTextArea.getText().equals("")) {
-                        valuesTextArea.setText("(" + jTextField.getText() + ")");
-                        values += "(" + jTextField.getText() + ")";
+                    if (!isLast) {
+                        valuesTextArea.append(jTextField.getText() + ", ");
+                        values += jTextField.getText() + ", ";
                     } else {
-                        valuesTextArea.append("\n(" + jTextField.getText() + ")");
-                        values += "\n (" + jTextField.getText() + ")";
+                        valuesTextArea.append(jTextField.getText());
+                        values += jTextField.getText();
                     }
                     jTextField.setText("");
                 }
             }
+            values += ")";
+            valuesTextArea.append(")");
         } else if (e.getSource() == submitButton) {
             if (valuesTextArea.getText().equals("")) {
                 JOptionPane.showMessageDialog(this, "Unable to perform insertion, if values are not given.");
@@ -129,12 +142,11 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
         }
         textFields.clear();
 
-        for(JLabel label : labels) {
+        for (JLabel label : labels) {
             inputPanel.remove(label);
         }
         labels.clear();
 
-        // Add new text fields
         for (String attrName : clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()).split(" ")) {
             JLabel attrLabel = new JLabel(attrName);
             JTextField attrTextArea = new JTextField("");

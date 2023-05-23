@@ -301,17 +301,15 @@ public class MyServer {
 
             String indexNames = catalogHandler.getIndexNames(databaseName);
             Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
-                if(indexName.contains(tableName)) {
+                if (indexName.contains(tableName)) {
                     String fields = catalogHandler.getCertainIndexFields(databaseName, indexName);
                     if (Objects.equals(fields, "")) {
                         return;
                     }
-                    System.out.println(Arrays.toString(Arrays.stream(fields.split("#")).toArray(String[]::new)));
                     int[] indexOfFields = Arrays.stream(fields.split("#"))
                             .mapToInt(field -> (catalogHandler.getIndexOfAttribute(databaseName, tableName, field) - catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName)))
                             .toArray();
 
-                    System.out.println(Arrays.toString(indexOfFields));
                     MongoCollection<Document> indexTable = database.getCollection(indexName);
                     String[] values = value.split("#");
                     String[] id = Arrays.stream(indexOfFields)
@@ -324,7 +322,9 @@ public class MyServer {
                     if (operation.equals("insert")) {
                         if (document != null) {
                             String existingValue = document.getString("value");
-                            newValue = existingValue.isEmpty() ? primaryKey : existingValue + "#" + primaryKey;
+                            if (!existingValue.contains(primaryKey)) {
+                                newValue = existingValue.isEmpty() ? primaryKey : existingValue + "#" + primaryKey;
+                            }
                         } else {
                             indexTable.insertOne(new Document().append("_id", joinedId).append("value", primaryKey));
                             return;
@@ -420,32 +420,36 @@ public class MyServer {
             int i = 4;
             nr -= nrPK;
 
+            String id = "";
+            String value = "";
             while (i < message.length) {
-                String id = message[i];
+                id += message[i];
                 for (int j = 1; j < nrPK; j++) {
                     id += "#" + message[i + j];
                 }
                 i += nrPK;
 
-                // key - fkattributes
-                // value - id
                 if (i < message.length) {
-                    String value = message[i];
+                    value += message[i];
                     for (int j = 1; j < nr; j++) {
                         value += "#" + message[i + j];
                     }
                     i += nr;
 
-                    String stringOfAttributes = catalogHandler.getStringOfAttributes(databaseName, tableName);
-                    String stringOfForeignKeys = catalogHandler.getStringOfForeignKeys(databaseName, tableName);
-                    if (stringOfForeignKeys != "") {
-                        updateIndex(id, value, databaseName, tableName, "insert");
+//                    String stringOfAttributes = catalogHandler.getStringOfAttributes(databaseName, tableName);
+//                    String stringOfForeignKeys = catalogHandler.getStringOfForeignKeys(databaseName, tableName);
+//                    if (stringOfForeignKeys != "") {
+//                        updateIndex(id, value, databaseName, tableName, "insert");
+//                    }
+                    if (collection.find(new Document("_id", id)).first() != null) {
+                        System.out.println("The document with id: " + id + " already exists in " + databaseName + "." + tableName + " table\n");
+                        return;
                     }
-
                     collection.insertOne(new Document("_id", id).append("value", value));
                     System.out.println("Successfully inserted into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
                 }
             }
+            updateIndex(id, value, databaseName, tableName, "insert");
         } catch (Exception e) {
             System.out.println("An error occurred while inserting into the " + databaseName + "." + tableName + " table in MongoDB\n");
             e.printStackTrace();
@@ -456,17 +460,17 @@ public class MyServer {
         try {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
             MongoCollection<Document> table = database.getCollection(tableName);
-            Document doc = table.find(Filters.eq("_id", id)).first();
-            if (doc != null) {
+            Document document = table.find(Filters.eq("_id", id)).first();
+            if (document != null) {
                 AtomicBoolean atomicBoolean = existsIndex(id, databaseName, tableName);
                 if (atomicBoolean.get()) {
                     System.out.println("The document with id: " + id + " can not be deleted because it is referenced by a foreign key constraint in another table.");
                 } else {
                     System.out.println("Successfully deleted the document with id: " + id + " from the " + databaseName + "." + tableName + " table.");
-                    table.deleteOne(doc);
+                    table.deleteOne(document);
                 }
             } else {
-                System.out.println("There is no data with such ID. 0 rows deleted\n");
+                System.out.println("The document with id: " + id + " does not exists in " + databaseName + "." + tableName + " table\n");
             }
         } catch (Exception e) {
             System.out.println("An error occured while deleting from " + databaseName + "." + tableName + " table in MongoDB\n");
