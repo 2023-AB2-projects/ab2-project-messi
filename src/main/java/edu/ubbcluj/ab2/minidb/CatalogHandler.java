@@ -266,7 +266,6 @@ public class CatalogHandler {
         }
     }
 
-
     public void createForeignKey(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
         if (t != null) {
@@ -295,6 +294,22 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at deleting the Foreign Key!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
+        }
+    }
+
+    public void createUnique(String databaseName, String tableName, String attributeName) {
+        Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
+        if (t != null) {
+            Root.Database.Table.UniqueKey u = getInstanceOfUnique(databaseName, tableName, attributeName);
+            if (u != null) {
+                System.out.println("ERROR at creating the Unique field!");
+                System.out.println("The Unique field " + databaseName + "." + tableName + "." + attributeName + " already exists!");
+            } else {
+                uniqueKey = t.new UniqueKey(t, attributeName);
+            }
+        } else {
+            System.out.println("ERROR at creating the Unique field!");
             System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
     }
@@ -395,6 +410,16 @@ public class CatalogHandler {
         return stringOfTableFields;
     }
 
+    public String getStringOfForeignKeys(String databaseName, String tableName) {
+        Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
+        return (t == null || t.foreignKeys.isEmpty()) ? "" : t.foreignKeys.stream().map(f -> f.fkName).collect(Collectors.joining(" "));
+    }
+
+    public String getStringOfUniqueKeys(String databaseName, String tableName) {
+        Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
+        return (t == null || t.uniqueKeys.isEmpty()) ? "" : t.uniqueKeys.stream().map(u -> u.uqAttrName).collect(Collectors.joining(" "));
+    }
+
     public Root.Database.Table getInstanceOfTable(String databaseName, String tableName) {
         Root.Database d = this.getInstanceOfDatabase(databaseName);
         if (d == null) {
@@ -438,9 +463,14 @@ public class CatalogHandler {
         return null;
     }
 
-    public String getStringOfForeignKeys(String databaseName, String tableName) {
+    public Root.Database.Table.UniqueKey getInstanceOfUnique(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
-        return (t == null || t.foreignKeys.isEmpty()) ? "" : t.foreignKeys.stream().map(f -> f.fkName).collect(Collectors.joining(" "));
+        for (Root.Database.Table.UniqueKey u: t.uniqueKeys) {
+            if (Objects.equals(u.uqAttrName, attributeName)) {
+                return u;
+            }
+        }
+        return null;
     }
 
     public Root.Database.Table.ForeignKey.Reference getInstanceOfReference(String databaseName, String tableName, String attributeName, String refTableName, String refAttributeName) {

@@ -223,6 +223,8 @@ public class MyServer {
         ArrayList<String[]> attributesArray = new ArrayList<>();
         ArrayList<String[]> primaryKeysArray = new ArrayList<>();
         ArrayList<String[]> foreignKeysArray = new ArrayList<>();
+        ArrayList<String[]> uniqueKeyArray = new ArrayList<>();
+
         int i = 3;
         while (i < message.length && !message[i].equals("CONSTRAINT")) {
             String attrName = message[i++];
@@ -256,10 +258,23 @@ public class MyServer {
                             primaryKeysArray.add(elements);
                         }
                     }
+                    case "UNIQUE" -> { // Current column is Unique
+                        i += 1;
+                        while (i < message.length && !message[i].equals("CONSTRAINT")) {
+                            String attrName = message[i++];
+                            String[] elements = {attrName};
+                            uniqueKeyArray.add(elements);
+                        }
+                    }
                 }
             }
             primaryKeysArray.forEach(primaryKey -> catalogHandler.createPrimaryKey(databaseName, tableName, primaryKey[0]));
+            uniqueKeyArray.forEach(uniqueKey -> {
+                catalogHandler.createUnique(databaseName, tableName, uniqueKey[0]);
+                createIndex(uniqueKey[0], databaseName, tableName, "UK");
+            });
 
+            // elsonek a primaryKey attributumokat rakjuk be az Attributes-ba
             attributesArray.removeIf(attribute -> {
                 boolean isPrimaryKey = primaryKeysArray.stream().anyMatch(primaryKey -> Objects.equals(attribute[0], primaryKey[0]));
                 if (isPrimaryKey) {
@@ -267,6 +282,17 @@ public class MyServer {
                 }
                 return isPrimaryKey;
             });
+
+            // utana az uniqueKey attributumokat rakjuk be az Attributes-ba
+            attributesArray.removeIf(attribute -> {
+                boolean isUniqueKey = uniqueKeyArray.stream().anyMatch(uniqueKey -> Objects.equals(attribute[0], uniqueKey[0]));
+                if (isUniqueKey) {
+                    catalogHandler.createAttribute(databaseName, tableName, attribute[0], attribute[1]);
+                }
+                return isUniqueKey;
+            });
+
+            // utana minden mas attributumot
             attributesArray.forEach(attribute -> catalogHandler.createAttribute(databaseName, tableName, attribute[0], attribute[1]));
 
             foreignKeysArray.forEach(foreignKey -> {
@@ -395,10 +421,12 @@ public class MyServer {
 
         String indexNames = catalogHandler.getIndexNames(databaseName);
         Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
-            MongoCollection<Document> indexTable = database.getCollection(indexName);
-            Document document = indexTable.find(Filters.eq("_id", id)).first();
-            if (document != null) {
-                foundIndex.set(true);
+            if (indexName.contains(tableName)) {
+                MongoCollection<Document> indexTable = database.getCollection(indexName);
+                Document document = indexTable.find(Filters.eq("_id", id)).first();
+                if (document != null) {
+                    foundIndex.set(true);
+                }
             }
         });
         return foundIndex;
@@ -436,11 +464,20 @@ public class MyServer {
                     }
                     i += nr;
 
-//                    String stringOfAttributes = catalogHandler.getStringOfAttributes(databaseName, tableName);
-//                    String stringOfForeignKeys = catalogHandler.getStringOfForeignKeys(databaseName, tableName);
-//                    if (stringOfForeignKeys != "") {
-//                        updateIndex(id, value, databaseName, tableName, "insert");
-//                    }
+                    int nrOfUniqueKeys = catalogHandler.getNumberOfUniqueKeys(databaseName, tableName);
+                    if (nrOfUniqueKeys != 0) {
+                        String unique = "";
+                        for (int k = 0; k < nrOfUniqueKeys; k++) {
+                            unique += value.split("#")[k];
+                        }
+                        unique = String.join("#",unique);
+                        System.out.println(unique);
+                        AtomicBoolean atomicBoolean = existsIndex(unique, databaseName, tableName);
+                        if (atomicBoolean.get()) {
+                            System.out.println("Unique key(s): " + unique + " already defined\n");
+                            return;
+                        }
+                    }
                     if (collection.find(new Document("_id", id)).first() != null) {
                         System.out.println("The document with id: " + id + " already exists in " + databaseName + "." + tableName + " table\n");
                         return;

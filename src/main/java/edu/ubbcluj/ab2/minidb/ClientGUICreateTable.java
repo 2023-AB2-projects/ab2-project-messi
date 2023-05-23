@@ -14,6 +14,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private MyComboBox fkToColumnBox;
     private JCheckBox pkCheckBox;
     private JCheckBox fkCheckBox;
+    private JCheckBox uniqueCheckBox;
     private JPanel fkPanel;
     private JButton addColumnButton;
     private JButton backButton;
@@ -22,6 +23,7 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
     private JTextArea queryAreaMessage;
     private String primaryKey = "";
     private String foreignKey = "";
+    private String unique = "";
 
 
     public ClientGUICreateTable(ClientInterface clientInterface) {
@@ -56,17 +58,21 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
         JLabel pkLabel = new JLabel("Primary key");
         JLabel fkLabel = new JLabel("Foreign key");
+        JLabel uniqueLabel = new JLabel("Unique");
 
         pkCheckBox = new JCheckBox();
         fkCheckBox = new JCheckBox();
+        uniqueCheckBox = new JCheckBox();
 
         addColumnButton.addActionListener(this);
         backButton.addActionListener(this);
         createTableButton.addActionListener(this);
         clearAllButton.addActionListener(this);
         fkCheckBox.addActionListener(this);
+        pkCheckBox.addActionListener(this);
+        uniqueCheckBox.addActionListener(this);
 
-        JPanel inputPanel = new JPanel(new GridLayout(7, 2, 5, 5));
+        JPanel inputPanel = new JPanel(new GridLayout(8, 2, 5, 5));
         inputPanel.add(databaseNameLabel);
         inputPanel.add(databaseComboBox);
         inputPanel.add(tableNameLabel);
@@ -79,6 +85,8 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         inputPanel.add(pkCheckBox);
         inputPanel.add(fkLabel);
         inputPanel.add(fkCheckBox);
+        inputPanel.add(uniqueLabel);
+        inputPanel.add(uniqueCheckBox);
 
         fkPanel = new JPanel(new GridLayout(2, 2, 5, 5));
         fkPanel.add(fkToTableLabel);
@@ -139,18 +147,30 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                         }
                     }
 
-                    if (fkCheckBox.isSelected()) {
-                        if (foreignKey.equals("")) {
-                            foreignKey += "CONSTRAINT FK_" + tableName + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
+                    if (uniqueCheckBox.isSelected()) {
+                        if (unique.equals("")) {
+                            unique += "CONSTRAINT UK_" + tableName + "_" + columnName + " UNIQUE(" + columnName + "),\n";
 
                         } else {
-                            foreignKey += ",\nCONSTRAINT FK_" + tableName + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + ")";
+                            unique += ",\nCONSTRAINT UK_" + tableName + "_" + columnName + " UNIQUE(" + columnName + "),\n";
                         }
-
                     }
-                    queryAreaMessage.append(columnName + " " + columnType);
+
+                    if (fkCheckBox.isSelected()) {
+                        if (foreignKey.equals("")) {
+                            foreignKey += "CONSTRAINT FK_" + tableName + "_" + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + "),\n";
+
+                        } else {
+                            foreignKey += ",\nCONSTRAINT FK_" + tableName + "_" + columnName + " FOREIGN KEY(" + columnName + ")\nREFERENCES " + fkToTableBox.getSelectedItem() + "(" + fkToColumnBox.getSelectedItem() + "),\n";
+                        }
+                    }
+
+                    queryAreaMessage.append(columnName + " " + columnType + "");
                     pkCheckBox.setSelected(false);
+                    pkCheckBox.setEnabled(true);
                     fkCheckBox.setSelected(false);
+                    uniqueCheckBox.setSelected(false);
+                    uniqueCheckBox.setEnabled(true);
                     fkToTableBox.setSelectedIndex(0);
                     fkToColumnBox.setSelectedIndex(0);
                     fkPanel.setVisible(false);
@@ -160,7 +180,6 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             }
         } else if (e.getSource() == createTableButton) {
             String tableName = tableNameField.getText();
-            String columnName = columnNameField.getText();
             if (queryAreaMessage.getText().equals("")) {
                 if (tableName.equals("")) {
                     JOptionPane.showMessageDialog(this, "To create a table, insert the required data.");
@@ -173,9 +192,17 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                 } else {
                     String query;
                     if (foreignKey.equals("")) {
-                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + columnName + " PRIMARY KEY(" + primaryKey + ")\n);";
+                        if (unique.equals("")) {
+                            query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + " PRIMARY KEY(" + primaryKey + ")\n);";
+                        } else {
+                            query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + " PRIMARY KEY(" + primaryKey + "),\n" + unique + "\n);";
+                        }
                     } else {
-                        query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + columnName + " PRIMARY KEY(" + primaryKey + ")\n" + foreignKey + "\n);";
+                        if (unique.equals("")) {
+                            query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + " PRIMARY KEY(" + primaryKey + "),\n" + foreignKey + "\n);";
+                        } else {
+                            query = "CREATE TABLE " + databaseComboBox.getSelectedItem() + "." + tableName + " (\n" + queryAreaMessage.getText() + ",\nCONSTRAINT PK_" + tableName + " PRIMARY KEY(" + primaryKey + "),\n" + unique + foreignKey + "\n);";
+                        }
                     }
                     JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                     clientInterface.writeIntoSocket(query);
@@ -184,11 +211,15 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
                     columnNameField.setText("");
                     columnTypeBox.setSelectedIndex(0);
                     pkCheckBox.setSelected(false);
+                    pkCheckBox.setEnabled(true);
                     primaryKey = "";
                     foreignKey = "";
+                    unique = "";
                     queryAreaMessage.setText("");
                     fkPanel.setVisible(false);
                     fkCheckBox.setSelected(false);
+                    uniqueCheckBox.setSelected(false);
+                    uniqueCheckBox.setEnabled(true);
                 }
             }
         } else if (e.getSource() == fkCheckBox) {
@@ -197,6 +228,10 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
             fkToColumnBox.setSelectedIndex(0);
             fkPanel.setVisible(fkCheckBox.isSelected());
+        } else if (e.getSource() == uniqueCheckBox) {
+            pkCheckBox.setEnabled(!pkCheckBox.isEnabled());
+        } else if (e.getSource() == pkCheckBox) {
+            uniqueCheckBox.setEnabled(!uniqueCheckBox.isEnabled());
         } else if (e.getSource() == fkToTableBox) {
             if (fkToTableBox.getSelectedItem() != null) {
                 fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
@@ -207,11 +242,16 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             columnNameField.setText("");
             columnTypeBox.setSelectedIndex(0);
             pkCheckBox.setSelected(false);
+            pkCheckBox.setEnabled(true);
             primaryKey = "";
             foreignKey = "";
+            unique = "";
             queryAreaMessage.setText("");
             fkPanel.setVisible(false);
             fkCheckBox.setSelected(false);
+            uniqueCheckBox.setSelected(false);
+            uniqueCheckBox.setEnabled(true);
+
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
         }

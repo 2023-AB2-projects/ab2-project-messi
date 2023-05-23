@@ -16,8 +16,8 @@ public class ClientGUISelect extends JPanel {
     public ClientGUISelect(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
 
-        JLabel selectLabel = new JLabel("SELECT ");
-        JLabel fromLabel = new JLabel("FROM");
+        JLabel selectLabel = new JLabel("SELECT:");
+        JLabel fromLabel = new JLabel("FROM:");
 
         JLabel databaseNameLabel = new JLabel("Database Name:");
         JLabel tableNameLabel = new JLabel("Table Name:");
@@ -27,7 +27,7 @@ public class ClientGUISelect extends JPanel {
         tableComboBox = new MyComboBox((clientInterface.getTableNames((String) databaseComboBox.getSelectedItem())));
         tableComboBox.setSelectedIndex(0);
 
-        inputPanel = new JPanel(new GridLayout(0, 4, 5, 5));
+        inputPanel = new JPanel(new GridLayout(0, 2, 5, 5));
         inputPanel.add(selectLabel);
         inputPanel.add(new JLabel());
         inputPanel.add(fromLabel);
