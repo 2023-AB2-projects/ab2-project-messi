@@ -6,6 +6,7 @@ import com.mongodb.MongoException;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
+import com.mongodb.connection.Stream;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -300,41 +301,45 @@ public class MyServer {
 
             String indexNames = catalogHandler.getIndexNames(databaseName);
             Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
-                String fields = catalogHandler.getCertainIndexFields(databaseName, indexName);
-                if (Objects.equals(fields, "")) {
-                    return;
-                }
-                int[] indexOfFields = Arrays.stream(fields.split("#"))
-                        .mapToInt(field -> (catalogHandler.getIndexOfAttribute(databaseName, tableName, field) - catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName)))
-                        .toArray();
-
-                MongoCollection<Document> indexTable = database.getCollection(indexName);
-                String[] values = value.split("#");
-                String[] id = Arrays.stream(indexOfFields)
-                        .mapToObj(index -> values[index])
-                        .toArray(String[]::new);
-                String joinedId = String.join("#", id);
-
-                Document document = indexTable.find(Filters.eq("_id", joinedId)).first();
-                String newValue = "";
-                if (operation.equals("insert")) {
-                    if (document != null) {
-                        String existingValue = document.getString("value");
-                        newValue = existingValue.isEmpty() ? primaryKey : existingValue + "#" + primaryKey;
-                    } else {
-                        indexTable.insertOne(new Document().append("_id", joinedId).append("value", primaryKey));
+                if(indexName.contains(tableName)) {
+                    String fields = catalogHandler.getCertainIndexFields(databaseName, indexName);
+                    if (Objects.equals(fields, "")) {
                         return;
                     }
-                } else if (operation.equals("delete")) {
-                    if (document != null) {
-                        String existingValue = document.getString("value");
-                        newValue = existingValue.replace(primaryKey, "").replaceAll("##", "#");
+                    System.out.println(Arrays.toString(Arrays.stream(fields.split("#")).toArray(String[]::new)));
+                    int[] indexOfFields = Arrays.stream(fields.split("#"))
+                            .mapToInt(field -> (catalogHandler.getIndexOfAttribute(databaseName, tableName, field) - catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName)))
+                            .toArray();
+
+                    System.out.println(Arrays.toString(indexOfFields));
+                    MongoCollection<Document> indexTable = database.getCollection(indexName);
+                    String[] values = value.split("#");
+                    String[] id = Arrays.stream(indexOfFields)
+                            .mapToObj(index -> values[index])
+                            .toArray(String[]::new);
+                    String joinedId = String.join("#", id);
+
+                    Document document = indexTable.find(Filters.eq("_id", joinedId)).first();
+                    String newValue = "";
+                    if (operation.equals("insert")) {
+                        if (document != null) {
+                            String existingValue = document.getString("value");
+                            newValue = existingValue.isEmpty() ? primaryKey : existingValue + "#" + primaryKey;
+                        } else {
+                            indexTable.insertOne(new Document().append("_id", joinedId).append("value", primaryKey));
+                            return;
+                        }
+                    } else if (operation.equals("delete")) {
+                        if (document != null) {
+                            String existingValue = document.getString("value");
+                            newValue = existingValue.replace(primaryKey, "").replaceAll("##", "#");
+                        }
                     }
-                }
-                if (!newValue.equals("")) {
-                    indexTable.findOneAndUpdate(Filters.eq("_id", joinedId), Updates.set("value", newValue));
-                } else {
-                    indexTable.findOneAndDelete(Filters.eq("_id", joinedId));
+                    if (!newValue.equals("")) {
+                        indexTable.findOneAndUpdate(Filters.eq("_id", joinedId), Updates.set("value", newValue));
+                    } else {
+                        indexTable.findOneAndDelete(Filters.eq("_id", joinedId));
+                    }
                 }
             });
         } catch (Exception e) {
