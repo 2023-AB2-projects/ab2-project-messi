@@ -4,7 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
-public class ClientGUISelect extends JFrame implements ActionListener {
+public class ClientGUISelect extends JPanel implements ActionListener {
+    private ClientInterface clientInterface;
     private JTextField tableNameTextField;
     private JTextField columnsTextField;
     private JTextField whereTextField;
@@ -14,10 +15,10 @@ public class ClientGUISelect extends JFrame implements ActionListener {
     private JTextArea selectStatementTextArea;
 
 
-    public ClientGUISelect() {
-        setTitle("Select Statment Simulator");
+    public ClientGUISelect(ClientInterface clientInterface) {
+        this.clientInterface = clientInterface;
+
         setSize(500, 500);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setVisible(true);
 
         JPanel inputPanel = new JPanel();
@@ -58,9 +59,9 @@ public class ClientGUISelect extends JFrame implements ActionListener {
         JButton generateButton = new JButton("Generate Select Statement");
         generateButton.addActionListener(this);
 
-        getContentPane().add(inputPanel, BorderLayout.NORTH);
-        getContentPane().add(outputPanel, BorderLayout.CENTER);
-        getContentPane().add(generateButton, BorderLayout.SOUTH);
+        this.add(inputPanel, BorderLayout.NORTH);
+        this.add(outputPanel, BorderLayout.CENTER);
+        this.add(generateButton, BorderLayout.SOUTH);
     }
 
     public void actionPerformed(ActionEvent e) {

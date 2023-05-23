@@ -10,8 +10,6 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
     private JTextField indexName;
     private MyComboBox fieldNameBox;
-    private JButton ascButton;
-    private JButton descButton;
     private JCheckBox uniqueCheckbox;
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
@@ -40,16 +38,9 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
         fieldNameBox = new MyComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()));
         fieldNameBox.setSelectedIndex(0);
         JLabel sortOrderLabel = new JLabel("Sort order:");
-//        ascButton = new JButton("ASC");
-//        ascButton.setEnabled(false);
-//        sortOrderString = ascButton.getText();
-//        descButton = new JButton("DESC");
         JLabel uniqueLabel = new JLabel("Unique:");
         uniqueCheckbox = new JCheckBox();
 
-//        JPanel orderPanel = new JPanel(new GridLayout(1, 2));
-//        orderPanel.add(ascButton);
-//        orderPanel.add(descButton);
 
         submitButton = new JButton("Submit");
         addButton = new JButton("Add");
@@ -70,18 +61,12 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
         inputPanel.add(tableComboBox);
         inputPanel.add(fieldNameLabel);
         inputPanel.add(fieldNameBox);
-        inputPanel.add(sortOrderLabel);
-//        inputPanel.add(orderPanel);
-        inputPanel.add(uniqueLabel);
-        inputPanel.add(uniqueCheckbox);
 
         databaseComboBox.addActionListener(this);
         tableComboBox.addActionListener(this);
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
         addButton.addActionListener(this);
-//        ascButton.addActionListener(this);
-//        descButton.addActionListener(this);
 
         JPanel buttonPanel = new JPanel(new FlowLayout());
         buttonPanel.add(addButton);
@@ -109,20 +94,11 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
             if (tableComboBox.getSelectedItem() != null) {
                 fieldNameBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()));
             }
-//        } else if (e.getSource() == ascButton) {
-//            descButton.setEnabled(true);
-//            ascButton.setEnabled(false);
-//            sortOrderString = ascButton.getText();
-//        } else if (e.getSource() == descButton) {
-//            descButton.setEnabled(false);
-//            ascButton.setEnabled(true);
-//            sortOrderString = descButton.getText();
         } else if (e.getSource() == addButton) {
             databaseComboBox.setEnabled(false);
             tableComboBox.setEnabled(false);
             uniqueCheckbox.setEnabled(false);
             queryAreaMessage.append(fieldNameBox.getSelectedItem() + "\n");
-//            queryAreaMessage.append(fieldNameBox.getSelectedItem() + " " + sortOrderString + "\n");
             fieldNameBox.removeItem(fieldNameBox.getSelectedItem());
             addButton.setEnabled(fieldNameBox.getSelectedItem() != null);
         } else if (e.getSource() == submitButton) {
@@ -131,7 +107,6 @@ public class ClientGUICreateIndex extends JPanel implements ActionListener {
             } else {
                 String fields = queryAreaMessage.getText().replace("\n", ", ");
                 fields = fields.substring(0, fields.lastIndexOf(", "));
-//                String unique = uniqueCheckbox.isSelected() ? " UNIQUE" : "";
                 String unique = "";
                 String query = "CREATE" + unique + " INDEX " + indexName.getText() + "\nON " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem() + "(" + fields + ");\n";
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);

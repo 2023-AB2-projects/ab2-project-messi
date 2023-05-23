@@ -19,6 +19,7 @@ public class ClientInterface extends JFrame implements ActionListener {
     private ClientGUICreateIndex createIndexPanel;
     private ClientGUIInsert insertPanel;
     private ClientGUIDelete deletePanel;
+    private ClientGUISelect selectPanel;
     private JButton createDatabaseButton;
     private JButton dropDatabaseButton;
     private JButton createTableButton;
@@ -26,6 +27,7 @@ public class ClientInterface extends JFrame implements ActionListener {
     private JButton createIndexButton;
     private JButton insertButton;
     private JButton deleteButton;
+    private JButton selectButton;
     private static JPanel cardPanel;
     private static CardLayout layout;
 
@@ -47,6 +49,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         createIndexButton = new JButton("Create Index");
         insertButton = new JButton("Insert");
         deleteButton = new JButton("Delete");
+        selectButton = new JButton("Select");
 
 
         //adding listeners to the buttons
@@ -57,6 +60,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         createIndexButton.addActionListener(this);
         insertButton.addActionListener(this);
         deleteButton.addActionListener(this);
+        selectButton.addActionListener(this);
 
 
         JPanel menu = new JPanel(new GridLayout(7, 1));
@@ -67,6 +71,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         menu.add(createIndexButton);
         menu.add(insertButton);
         menu.add(deleteButton);
+        menu.add(selectButton);
 
 
         //panels:
@@ -77,6 +82,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         createIndexPanel = new ClientGUICreateIndex(this);
         insertPanel = new ClientGUIInsert(this);
         deletePanel = new ClientGUIDelete(this);
+        selectPanel = new ClientGUISelect(this);
 
 
         //add panels to cardPanel
@@ -88,6 +94,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         cardPanel.add(createIndexPanel, "createIndex");
         cardPanel.add(insertPanel, "insert");
         cardPanel.add(deletePanel, "delete");
+        cardPanel.add(selectPanel, "select");
 
         layout.show(cardPanel, "menu");
         this.add(cardPanel);
@@ -115,6 +122,8 @@ public class ClientInterface extends JFrame implements ActionListener {
         } else if (e.getSource() == deleteButton) {
             deletePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "delete");
+        } else if(e.getSource() == selectButton){
+            layout.show(cardPanel, "select");
         }
     }
 
