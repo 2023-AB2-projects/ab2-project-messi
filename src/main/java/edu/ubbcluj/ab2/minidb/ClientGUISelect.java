@@ -1,23 +1,24 @@
 package edu.ubbcluj.ab2.minidb;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 
 public class ClientGUISelect extends JPanel implements ActionListener {
-    JPanel inputPanel;
+    private JPanel inputPanel;
     private ClientInterface clientInterface;
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
-
-    private JButton submitButton;
-    private JButton backButton;
     private JList<String> fieldsList;
+    private JTextArea conditions;
+    private JButton submitButton;
+    private JButton addConditionButton;
+    // TODO
+    // private ArrayList<>
+    private JButton backButton;
     private JTextArea selectQuery;
 
 
@@ -44,6 +45,25 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         inputPanel.add(databaseComboBox);
         inputPanel.add(tableNameLabel);
         inputPanel.add(tableComboBox);
+        inputPanel.add(new JLabel("WHERE:"));
+        conditions = new JTextArea("");
+        conditions.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateQueryConditions();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateQueryConditions();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateQueryConditions();
+            }
+        });
+        inputPanel.add(conditions);
 
         selectQuery = new JTextArea("", 10, 40);
         selectQuery.setEditable(false);
@@ -52,9 +72,10 @@ public class ClientGUISelect extends JPanel implements ActionListener {
 
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
-
+        addConditionButton = new JButton("Add condition");
         databaseComboBox.addActionListener(this);
         tableComboBox.addActionListener(this);
+        addConditionButton.addActionListener(this);
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
 
@@ -63,6 +84,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         });
 
         JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(addConditionButton);
         buttonPanel.add(submitButton);
         buttonPanel.add(backButton);
 
@@ -87,6 +109,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             fieldsList.setListData(getFields());
             fieldsList.setSelectedIndex(0);
             updateQuery();
+            updateQueryConditions();
             inputPanel.revalidate();
             inputPanel.repaint();
             // selectQuery.setText("SELECT " + fieldsList.getSelectedValue() + "\nFROM " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem());
@@ -95,10 +118,15 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             fieldsList.setListData(getFields());
             fieldsList.setSelectedIndex(0);
             updateQuery();
+            updateQueryConditions();
             inputPanel.revalidate();
             inputPanel.repaint();
             // TODO: jelenitse meg hogy az adott tablaban milyen attr-ok vannal
             // updateTextFields();
+
+        } else if (e.getSource() == addConditionButton) {
+            // TODO
+            // inputPanel
         } else if (e.getSource() == submitButton) {
             JOptionPane.showMessageDialog(this, "SQL query:\n" + selectQuery.getText());
             clientInterface.writeIntoSocket(selectQuery.getText());
@@ -114,7 +142,8 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         fieldsList.add("*");
 
         for (String attrName : clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()).split(" ")) {
-            fieldsList.add(tableComboBox.getSelectedItem() + "." + attrName);
+            // join eseten: fieldsList.add(tableComboBox.getSelectedItem() + "." + attrName);
+            fieldsList.add(attrName);
         }
 
         String[] fields = new String[fieldsList.size()];
@@ -159,6 +188,15 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         else {
             fieldsList.setSelectedIndex(0);
             selectQuery.setText("SELECT " + fieldsList.getSelectedValue() + "\nFROM " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem());
+        }
+    }
+
+    public void updateQueryConditions() {
+        if (!conditions.getText().isBlank()) {
+            selectQuery.setText(selectQuery.getText().split("\nWHERE ")[0]);
+            selectQuery.append("\nWHERE " + conditions.getText());
+        } else {
+            selectQuery.setText(selectQuery.getText().split("\nWHERE ")[0]);
         }
     }
 

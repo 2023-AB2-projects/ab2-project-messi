@@ -7,9 +7,9 @@ import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
 public class ClientGUIInsert extends JPanel implements ActionListener {
-    JPanel inputPanel;
-    ArrayList<JTextField> textFields;
-    ArrayList<JLabel> labels;
+    private JPanel inputPanel;
+    private ArrayList<JTextField> textFields;
+    private ArrayList<JLabel> labels;
     private ClientInterface clientInterface;
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
