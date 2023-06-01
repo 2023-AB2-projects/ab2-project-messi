@@ -17,7 +17,6 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
     private JButton submitButton;
     private JButton backButton;
     private JTextArea valuesTextArea;
-    private JScrollPane scrollPane;
     private String values = "";
 
     public ClientGUIInsert(ClientInterface clientInterface) {
@@ -50,10 +49,9 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
             inputPanel.add(attrTextArea);
         }
 
-        valuesTextArea = new JTextArea(10, 40);
+        valuesTextArea = new JTextArea("", 10, 40);
         valuesTextArea.setEditable(false);
-        valuesTextArea.setText("");
-        scrollPane = new JScrollPane(valuesTextArea);
+        JScrollPane scrollPane = new JScrollPane(valuesTextArea);
 
         addValuesButton = new JButton("Add Values");
         submitButton = new JButton("Submit");
@@ -94,8 +92,8 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
                 valuesTextArea.setText("(");
                 values += "(";
             } else {
-                valuesTextArea.setText("\n(");
-                values += "\n(";
+                valuesTextArea.append("\n(");
+                values += "\n                (";
             }
             int lastIndex = textFields.size() - 1;
             for (int i = 0; i < textFields.size(); i++) {

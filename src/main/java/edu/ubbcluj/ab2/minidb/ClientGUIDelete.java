@@ -24,8 +24,7 @@ public class ClientGUIDelete extends JPanel implements ActionListener {
         databaseComboBox.setSelectedIndex(0);
         tableComboBox = new MyComboBox((clientInterface.getTableNames((String) databaseComboBox.getSelectedItem())));
         tableComboBox.setSelectedIndex(0);
-        keyValueField = new JTextField(20);
-        keyValueField.setText("");
+        keyValueField = new JTextField("", 20);
 
         JPanel inputPanel = new JPanel(new GridLayout(3, 2, 5, 5));
         inputPanel.add(databaseNameLabel);

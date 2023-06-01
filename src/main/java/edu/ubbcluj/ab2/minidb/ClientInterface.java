@@ -63,7 +63,7 @@ public class ClientInterface extends JFrame implements ActionListener {
         selectButton.addActionListener(this);
 
 
-        JPanel menu = new JPanel(new GridLayout(7, 1));
+        JPanel menu = new JPanel(new GridLayout(8, 1));
         menu.add(createDatabaseButton);
         menu.add(dropDatabaseButton);
         menu.add(createTableButton);
