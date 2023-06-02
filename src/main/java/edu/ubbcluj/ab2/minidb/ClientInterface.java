@@ -123,6 +123,7 @@ public class ClientInterface extends JFrame implements ActionListener {
             deletePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "delete");
         } else if(e.getSource() == selectButton){
+            selectPanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "select");
         }
     }
@@ -181,6 +182,11 @@ public class ClientInterface extends JFrame implements ActionListener {
 
     public String getFieldNames(String databaseName, String tableName) {
         writeIntoSocket("GETFIELDS " + databaseName + " " + tableName);
+        return readFromSocket();
+    }
+
+    public String getAttributeType(String databaseName, String tableName, String attributedName){
+        writeIntoSocket("GETFIELDTYPE " + databaseName + " " + tableName + " " + attributedName);
         return readFromSocket();
     }
 

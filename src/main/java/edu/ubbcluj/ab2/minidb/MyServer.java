@@ -6,7 +6,6 @@ import com.mongodb.MongoException;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
-import com.mongodb.connection.Stream;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -34,12 +33,12 @@ public class MyServer {
         startConnection();
         try {
             mongoClient = MongoClients.create(new ConnectionString("mongodb://localhost:27017/"));
-            System.out.println("Connection with mongoDB was established");
         } catch (MongoException e) {
-            System.out.println("An error occurred while establishing connection with mongoDB\n");
+            System.out.println("\nAn error occurred while establishing connection with mongoDB\n");
             e.printStackTrace();
         }
 
+        System.out.println("Connection with mongoDB was established");
         catalogHandler = isFileEmpty(fileName) ? new CatalogHandler(mongoClient) : new CatalogHandler(fileName, mongoClient);
 
         while (run) {
@@ -55,13 +54,16 @@ public class MyServer {
     public void handleMessage() {
         String query = null;
         try {
-            query = ((String) objectInputStream.readObject()).replaceAll("\\(", " ").replaceAll("\\)", " ").replaceAll(";", "").replaceAll(",", " ").replaceAll("\n", " ").replaceAll("\t", " ").replaceAll(" +", " ").replaceAll(" = ", " ").replaceAll("  ", " ");
+            query = ((String) objectInputStream.readObject()).replaceAll("\\(", " ").replaceAll("\\)", " ").replaceAll(";", "").replaceAll(",", " ").replaceAll("\n", " ").replaceAll("\t", " ").replaceAll(" +", " ").replaceAll("  ", " ");
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("An error occurred while reading object from socket!\n");
+            System.out.println("\nAn error occurred while reading object from socket!\n");
             endConnection();
         }
 
-        assert query != null;
+        // assert query != null;
+        if (query == null) {
+            return;
+        }
         String[] message = query.split(" ");
 
         System.out.print("\nmessage: ");
@@ -126,9 +128,20 @@ public class MyServer {
             }
             case "DELETE" -> {
                 String[] string = message[2].split("\\.");
-                delete(string[0], string[1], message[5]);
+                delete(string[0], string[1], message[6]);
             }
-            default -> System.out.println("An error occurred while reading Client's message!\n");
+            case "GETFIELDTYPE" -> {
+                if (message.length == 4) {
+                    if (catalogHandler.getAttributeType(message[1], message[2], message[3]) == 0) {
+                        writeIntoSocket("NUMERIC");
+                    } else {
+                        writeIntoSocket("NOT NUMERIC");
+                    }
+                } else {
+                    writeIntoSocket("");
+                }
+            }
+            default -> System.out.println("\nAn error occurred while reading Client's message!\n");
         }
         catalogHandler.saveCatalogToFile(fileName);
     }
@@ -141,7 +154,7 @@ public class MyServer {
             objectInputStream = new ObjectInputStream(socket.getInputStream());
             run = true;
         } catch (IOException e) {
-            System.out.println("An error occurred while initializing connection!\n");
+            System.out.println("\nAn error occurred while initializing connection!\n");
             endConnection();
         }
     }
@@ -156,7 +169,7 @@ public class MyServer {
             serverSocket.close();
             run = false;
         } catch (IOException e) {
-            System.out.println("An error occurred while ending connection!\n");
+            System.out.println("\nAn error occurred while ending connection!\n");
         }
     }
 
@@ -164,7 +177,7 @@ public class MyServer {
         try {
             objectOutputStream.writeObject(message);
         } catch (IOException e) {
-            System.out.println("An error occurred while writing object to socket!\n");
+            System.out.println("\nAn error occurred while writing object to socket!\n");
             endConnection();
         }
     }
@@ -176,7 +189,7 @@ public class MyServer {
             file.append(jsonObject.toString());
             file.close();
         } catch (IOException e) {
-            System.out.println("An error occurred while writing to " + fileName + " file!\n");
+            System.out.println("\nAn error occurred while writing to " + fileName + " file!\n");
             throw new RuntimeException(e);
         }
     }
@@ -190,9 +203,9 @@ public class MyServer {
         catalogHandler.createDatabase(databaseName);
         try {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
-            System.out.println("Succesfully created the " + databaseName + " database in MongoDB\n");
+            System.out.println("\nSuccesfully created the " + databaseName + " database in MongoDB\n");
         } catch (MongoException e) {
-            System.out.println("An error occurred while creating a database in MongoDB:\n");
+            System.out.println("\nAn error occurred while creating a database in MongoDB:\n");
             e.printStackTrace();
         }
     }
@@ -202,9 +215,9 @@ public class MyServer {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         try {
             database.drop();
-            System.out.println("Succesfully dropped the " + databaseName + " database in MongoDB\n");
+            System.out.println("\nSuccesfully dropped the " + databaseName + " database in MongoDB\n");
         } catch (MongoCommandException e) {
-            System.out.println("An error occurred while droping the " + databaseName + " database in MongoDB:\n");
+            System.out.println("\nAn error occurred while droping the " + databaseName + " database in MongoDB:\n");
             e.printStackTrace();
         }
     }
@@ -313,7 +326,7 @@ public class MyServer {
             MongoCollection<Document> collection = database.getCollection(tableName);
             collection.drop();
         } catch (Exception e) {
-            System.out.println("An error occurred while dropping the " + databaseName + "." + tableName + " table in MongoDB\n");
+            System.out.println("\nAn error occurred while dropping the " + databaseName + "." + tableName + " table in MongoDB\n");
         }
     }
 
@@ -393,7 +406,7 @@ public class MyServer {
                 .toArray();
         for (int indexOfField : indexOfFields) {
             if (indexOfField == -1) {
-                System.out.println("An error occurred while finding the index of the " + indexOfField + " attribute in " + fileName + "\n");
+                System.out.println("\nAn error occurred while finding the index of the " + indexOfField + " attribute in " + fileName + "\n");
                 return;
             }
         }
@@ -440,7 +453,7 @@ public class MyServer {
 
             int nr = catalogHandler.getNumberOfAttributes(databaseName, tableName);
             if (nr != message.length - 4) {
-                System.out.println("An error occurred while inserting the " + tableName + " table in " + databaseName + " database.\n");
+                System.out.println("\nAn error occurred while inserting the " + tableName + " table in " + databaseName + " database.\n");
                 return;
             }
 
@@ -448,47 +461,47 @@ public class MyServer {
             int i = 4;
             nr -= nrPK;
 
-            String id = "";
-            String value = "";
+            StringBuilder id = new StringBuilder();
+            StringBuilder value = new StringBuilder();
             while (i < message.length) {
-                id += message[i];
+                id.append(message[i]);
                 for (int j = 1; j < nrPK; j++) {
-                    id += "#" + message[i + j];
+                    id.append("#").append(message[i + j]);
                 }
                 i += nrPK;
 
                 if (i < message.length) {
-                    value += message[i];
+                    value.append(message[i]);
                     for (int j = 1; j < nr; j++) {
-                        value += "#" + message[i + j];
+                        value.append("#").append(message[i + j]);
                     }
                     i += nr;
 
                     int nrOfUniqueKeys = catalogHandler.getNumberOfUniqueKeys(databaseName, tableName);
                     if (nrOfUniqueKeys != 0) {
-                        String unique = "";
+                        StringBuilder unique = new StringBuilder();
                         for (int k = 0; k < nrOfUniqueKeys; k++) {
-                            unique += value.split("#")[k];
+                            unique.append(value.toString().split("#")[k]);
                         }
-                        unique = String.join("#",unique);
+                        unique = new StringBuilder(String.join("#", unique.toString()));
                         System.out.println(unique);
-                        AtomicBoolean atomicBoolean = existsIndex(unique, databaseName, tableName);
+                        AtomicBoolean atomicBoolean = existsIndex(unique.toString(), databaseName, tableName);
                         if (atomicBoolean.get()) {
-                            System.out.println("Unique key(s): " + unique + " already defined\n");
+                            System.out.println("\nUnique key(s): " + unique + " already defined\n");
                             return;
                         }
                     }
-                    if (collection.find(new Document("_id", id)).first() != null) {
-                        System.out.println("The document with id: " + id + " already exists in " + databaseName + "." + tableName + " table\n");
+                    if (collection.find(new Document("_id", id.toString())).first() != null) {
+                        System.out.println("\n[0 rows affected]\nThe document with id: " + id + " already exists in " + databaseName + "." + tableName + " table\n");
                         return;
                     }
-                    collection.insertOne(new Document("_id", id).append("value", value));
-                    System.out.println("Successfully inserted into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
+                    collection.insertOne(new Document("_id", id.toString()).append("value", value.toString()));
+                    System.out.println("\nSuccessfully inserted into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
                 }
             }
-            updateIndex(id, value, databaseName, tableName, "insert");
+            updateIndex(id.toString(), value.toString(), databaseName, tableName, "insert");
         } catch (Exception e) {
-            System.out.println("An error occurred while inserting into the " + databaseName + "." + tableName + " table in MongoDB\n");
+            System.out.println("\nAn error occurred while inserting into the " + databaseName + "." + tableName + " table in MongoDB\n");
             e.printStackTrace();
         }
     }
@@ -501,16 +514,16 @@ public class MyServer {
             if (document != null) {
                 AtomicBoolean atomicBoolean = existsIndex(id, databaseName, tableName);
                 if (atomicBoolean.get()) {
-                    System.out.println("The document with id: " + id + " can not be deleted because it is referenced by a foreign key constraint in another table.");
+                    System.out.println("\nThe document with id: " + id + " can not be deleted because it is referenced by a foreign key constraint in another table.");
                 } else {
-                    System.out.println("Successfully deleted the document with id: " + id + " from the " + databaseName + "." + tableName + " table.");
+                    System.out.println("\nSuccessfully deleted the document with id: " + id + " from the " + databaseName + "." + tableName + " table.");
                     table.deleteOne(document);
                 }
             } else {
-                System.out.println("The document with id: " + id + " does not exists in " + databaseName + "." + tableName + " table\n");
+                System.out.println("\nThe document with id: " + id + " does not exists in " + databaseName + "." + tableName + " table\n");
             }
         } catch (Exception e) {
-            System.out.println("An error occured while deleting from " + databaseName + "." + tableName + " table in MongoDB\n");
+            System.out.println("\nAn error occured while deleting from " + databaseName + "." + tableName + " table in MongoDB\n");
             e.printStackTrace();
         }
     }

@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -601,6 +600,27 @@ public class CatalogHandler {
             }
         } else {
             System.out.println("ERROR at getting the index of Attributes in the specified Table!");
+            System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
+        }
+        return -1;
+    }
+
+    // return -1 if error, else if attribute type is numeric, returns 0, otherwise returns 1
+    public int getAttributeType(String databaseName, String tableName, String attributeName){
+        Root.Database.Table t = getInstanceOfTable(databaseName, tableName);
+        if (t != null) {
+            for (Root.Database.Table.Attribute a : t.attributes) {
+                if (Objects.equals(a.attrName, attributeName)) {
+                    if (Objects.equals(a.attrType, "INT") || Objects.equals(a.attrType, "FLOAT") || Objects.equals(a.attrType, "BIT")){
+                        return 0;
+                    }
+                    else{
+                        return 1;
+                    }
+                }
+            }
+        } else {
+            System.out.println("ERROR at getting the type of an attribute in the specified table!");
             System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
         return -1;

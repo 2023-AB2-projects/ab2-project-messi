@@ -1,23 +1,21 @@
 package edu.ubbcluj.ab2.minidb;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ClientGUISelect extends JPanel implements ActionListener {
-    private JPanel inputPanel;
     private ClientInterface clientInterface;
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
     private JList<String> fieldsList;
-    private JTextArea conditions;
     private JButton submitButton;
     private JButton addConditionButton;
-    // TODO
-    // private ArrayList<>
+    private JComboBox<String> conditionField;
+    private JComboBox<String> operators;
+    private JTextField condition;
     private JButton backButton;
     private JTextArea selectQuery;
 
@@ -33,10 +31,10 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         databaseComboBox.setSelectedIndex(0);
         tableComboBox = new MyComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
         tableComboBox.setSelectedIndex(0);
-        fieldsList = new JList<>(getFields());
+        fieldsList = new JList<>(getFields(true));
         fieldsList.setSelectedIndex(0);
 
-        inputPanel = new JPanel(new GridLayout(0, 2, 5, 5));
+        JPanel inputPanel = new JPanel(new GridLayout(0, 2, 5, 5));
         inputPanel.add(selectLabel);
         inputPanel.add(fieldsList);
         inputPanel.add(new JLabel("FROM:"));
@@ -46,24 +44,22 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         inputPanel.add(tableNameLabel);
         inputPanel.add(tableComboBox);
         inputPanel.add(new JLabel("WHERE:"));
-        conditions = new JTextArea("");
-        conditions.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                updateQueryConditions();
-            }
+        inputPanel.add(new JLabel());
 
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                updateQueryConditions();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                updateQueryConditions();
-            }
-        });
-        inputPanel.add(conditions);
+        JPanel conditionPane = new JPanel(new GridLayout(1, 2, 5, 10));
+        conditionField = new JComboBox<>(getFields(false));
+        conditionField.setSelectedIndex(0);
+        conditionField.addActionListener(this);
+        operators = new JComboBox<>();
+        condition = new JTextField("");
+        condition.setSize(80, 30);
+        condition.setEditable(true);
+        updateOperators();
+        operators.setSelectedIndex(0);
+        conditionPane.add(conditionField);
+        conditionPane.add(operators);
+        inputPanel.add(conditionPane);
+        inputPanel.add(condition);
 
         selectQuery = new JTextArea("", 10, 40);
         selectQuery.setEditable(false);
@@ -78,10 +74,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         addConditionButton.addActionListener(this);
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
-
-        fieldsList.addListSelectionListener(e -> {
-            updateQuery();
-        });
+        fieldsList.addListSelectionListener(e -> updateQuery());
 
         JPanel buttonPanel = new JPanel(new FlowLayout());
         buttonPanel.add(addConditionButton);
@@ -105,28 +98,32 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         if (e.getSource() == databaseComboBox) {
             tableComboBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
             tableComboBox.setSelectedIndex(0);
-            fieldsList.removeAll();
-            fieldsList.setListData(getFields());
-            fieldsList.setSelectedIndex(0);
-            updateQuery();
-            updateQueryConditions();
-            inputPanel.revalidate();
-            inputPanel.repaint();
-            // selectQuery.setText("SELECT " + fieldsList.getSelectedValue() + "\nFROM " + databaseComboBox.getSelectedItem() + "." + tableComboBox.getSelectedItem());
+            updateWhere();
         } else if (e.getSource() == tableComboBox) {
-            fieldsList.removeAll();
-            fieldsList.setListData(getFields());
-            fieldsList.setSelectedIndex(0);
-            updateQuery();
-            updateQueryConditions();
-            inputPanel.revalidate();
-            inputPanel.repaint();
+            updateWhere();
             // TODO: jelenitse meg hogy az adott tablaban milyen attr-ok vannal
             // updateTextFields();
 
+        } else if (e.getSource() == conditionField) {
+            updateOperators();
         } else if (e.getSource() == addConditionButton) {
-            // TODO
-            // inputPanel
+            if (condition.getText().isBlank()) {
+                JOptionPane.showMessageDialog(this, "Fill in the condition first!");
+            } else {
+                String cond = conditionField.getSelectedItem() + " " + operators.getSelectedItem();
+                // if there was only 1 operator in the combo box, then it means teh field is a string/date/datetime, and has to be surrounded with ''
+                if (operators.getItemCount() == 1) {
+                    cond += " '" + condition.getText() + "'";
+                } else {
+                    cond += " " + condition.getText();
+                }
+                if (selectQuery.getText().contains("WHERE")) {
+                    selectQuery.append(" AND " + cond);
+                } else {
+                    selectQuery.append("\nWHERE " + cond);
+                }
+            }
+            condition.setText("");
         } else if (e.getSource() == submitButton) {
             JOptionPane.showMessageDialog(this, "SQL query:\n" + selectQuery.getText());
             clientInterface.writeIntoSocket(selectQuery.getText());
@@ -137,14 +134,14 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         }
     }
 
-    public String[] getFields() {
+    public String[] getFields(boolean all) {
         ArrayList<String> fieldsList = new ArrayList<>();
-        fieldsList.add("*");
-
-        for (String attrName : clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()).split(" ")) {
-            // join eseten: fieldsList.add(tableComboBox.getSelectedItem() + "." + attrName);
-            fieldsList.add(attrName);
+        if (all) {
+            fieldsList.add("*");
         }
+
+        // join eseten: fieldsList.add(tableComboBox.getSelectedItem() + "." + attrName);
+        fieldsList.addAll(Arrays.asList(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()).split(" ")));
 
         String[] fields = new String[fieldsList.size()];
         for (int i = 0; i < fieldsList.size(); i++) {
@@ -168,9 +165,9 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             } else {
                 if (selectedIndices.length > 1 && indexOfStar != -1) {
                     fieldsList.clearSelection();
-                    for (int i = 0; i < selectedIndices.length; i++) {
-                        if (selectedIndices[i] != indexOfStar) {
-                            fieldsList.setSelectedIndex(selectedIndices[i]);
+                    for (int selectedIndex : selectedIndices) {
+                        if (selectedIndex != indexOfStar) {
+                            fieldsList.setSelectedIndex(selectedIndex);
                         }
                     }
                     System.out.println();
@@ -191,13 +188,31 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         }
     }
 
-    public void updateQueryConditions() {
-        if (!conditions.getText().isBlank()) {
-            selectQuery.setText(selectQuery.getText().split("\nWHERE ")[0]);
-            selectQuery.append("\nWHERE " + conditions.getText());
+    public void updateOperators() {
+        String type = clientInterface.getAttributeType((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem(), (String) conditionField.getSelectedItem());
+        if (!type.equals("NUMERIC")) {
+            operators.removeAllItems();
+            operators.addItem("=");
         } else {
-            selectQuery.setText(selectQuery.getText().split("\nWHERE ")[0]);
+            operators.removeAllItems();
+            for (String item : new String[]{"=", ">", ">=", "<", "<="}) {
+                operators.addItem(item);
+            }
         }
+        condition.setText("");
+    }
+
+    public void updateWhere() {
+        fieldsList.removeAll();
+        fieldsList.setListData(getFields(true));
+        fieldsList.setSelectedIndex(0);
+        conditionField.removeAll();
+        for (String field : getFields(false)) {
+            conditionField.addItem(field);
+        }
+        conditionField.setSelectedIndex(0);
+        updateQuery();
+        updateOperators();
     }
 
     public int getIndexOfSelectedItem(String value) {
