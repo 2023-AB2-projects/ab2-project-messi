@@ -68,7 +68,7 @@ goto fail
 :execute
 @rem Setup the command line
 
-set CLASSPATH=%APP_HOME%\lib\ab2-project-messi-1.0-SNAPSHOT.jar;%APP_HOME%\lib\mongodb-driver-sync-4.9.0.jar;%APP_HOME%\lib\log4j-core-2.7.jar;%APP_HOME%\lib\log4j-api-2.7.jar;%APP_HOME%\lib\slf4j-api-2.0.7.jar;%APP_HOME%\lib\mongodb-driver-core-4.9.0.jar;%APP_HOME%\lib\bson-record-codec-4.9.0.jar;%APP_HOME%\lib\bson-4.9.0.jar;%APP_HOME%\lib\gson-2.10.1.jar;%APP_HOME%\lib\jackson-annotations-2.13.3.jar;%APP_HOME%\lib\jackson-core-2.13.3.jar;%APP_HOME%\lib\jackson-databind-2.13.3.jar;%APP_HOME%\lib\json-20230227.jar
+set CLASSPATH=%APP_HOME%\lib\ab2-project-messi-1.0-SNAPSHOT.jar;%APP_HOME%\lib\mongodb-driver-sync-4.9.0.jar;%APP_HOME%\lib\mongodb-driver-core-4.9.0.jar;%APP_HOME%\lib\bson-record-codec-4.9.0.jar;%APP_HOME%\lib\bson-4.9.0.jar;%APP_HOME%\lib\gson-2.10.1.jar;%APP_HOME%\lib\jackson-annotations-2.13.3.jar;%APP_HOME%\lib\jackson-core-2.13.3.jar;%APP_HOME%\lib\jackson-databind-2.13.3.jar;%APP_HOME%\lib\json-20230227.jar
 
 
 @rem Execute ab2-project-messi

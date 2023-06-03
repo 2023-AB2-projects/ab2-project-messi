@@ -77,20 +77,6 @@ public class CatalogHandler {
         }
     }
 
-//    public void createIndex(String databaseName, String indexName, String fields) {
-//        Root.Database d = this.getInstanceOfDatabase(databaseName);
-//        if (d == null) {
-//            System.out.println("The database " + databaseName + " does not exist\n");
-//            return;
-//        }
-//        Root.Database.Index i = this.getInstanceOfIndex(databaseName, indexName);
-//        if (i != null) {
-//            System.out.println("The index " + indexName + " already exists\n");
-//            return;
-//        }
-//        index = d.new Index(d, indexName, fields.split("#"));
-//    }
-
     public void createIndex(String databaseName, String indexName, String fields) {
         Root.Database d = this.getInstanceOfDatabase(databaseName);
         if (d != null) {
