@@ -123,6 +123,7 @@ public class ClientInterface extends JFrame implements ActionListener {
             deletePanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "delete");
         } else if(e.getSource() == selectButton){
+            this.setSize(1000, 800);
             selectPanel.getDatabaseComboBox().updateComboBox(getDatabasesNames());
             layout.show(cardPanel, "select");
         }

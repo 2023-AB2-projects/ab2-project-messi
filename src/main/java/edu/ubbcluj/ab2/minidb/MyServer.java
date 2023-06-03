@@ -451,25 +451,30 @@ public class MyServer {
         return foundIndex;
     }
 
-
     public void insert(String databaseName, String tableName, String[] message) {
         try {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
             MongoCollection<Document> collection = database.getCollection(tableName);
 
             int nr = catalogHandler.getNumberOfAttributes(databaseName, tableName);
-            if (nr != message.length - 4) {
+            System.out.println(nr);
+            System.out.println(message.length);
+            if ((message.length - 4) % nr != 0) {
                 System.out.println("\nAn error occurred while inserting the " + tableName + " table in " + databaseName + " database.\n");
                 return;
             }
 
             int nrPK = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
-            int i = 4;
+            int i = 4, rowNr = 0;
             nr -= nrPK;
 
             StringBuilder id = new StringBuilder();
             StringBuilder value = new StringBuilder();
             while (i < message.length) {
+                if ((i - 4) == rowNr * (nr + nrPK)) {
+                    id = new StringBuilder();
+                    value = new StringBuilder();
+                }
                 id.append(message[i]);
                 for (int j = 1; j < nrPK; j++) {
                     id.append("#").append(message[i + j]);
@@ -482,6 +487,7 @@ public class MyServer {
                         value.append("#").append(message[i + j]);
                     }
                     i += nr;
+                    rowNr++;
 
                     int nrOfUniqueKeys = catalogHandler.getNumberOfUniqueKeys(databaseName, tableName);
                     if (nrOfUniqueKeys != 0) {
@@ -494,15 +500,15 @@ public class MyServer {
                         AtomicBoolean atomicBoolean = existsIndex(unique.toString(), databaseName, tableName);
                         if (atomicBoolean.get()) {
                             System.out.println("\nUnique key(s): " + unique + " already defined\n");
-                            return;
+                            continue;
                         }
                     }
                     if (collection.find(new Document("_id", id.toString())).first() != null) {
                         System.out.println("\n[0 rows affected]\nThe document with id: " + id + " already exists in " + databaseName + "." + tableName + " table\n");
-                        return;
+                    } else {
+                        collection.insertOne(new Document("_id", id.toString()).append("value", value.toString()));
+                        System.out.println("\nSuccessfully inserted into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
                     }
-                    collection.insertOne(new Document("_id", id.toString()).append("value", value.toString()));
-                    System.out.println("\nSuccessfully inserted into " + databaseName + "." + tableName + " with id: " + id + " values: " + value);
                 }
             }
             updateIndex(id.toString(), value.toString(), databaseName, tableName, "insert");
@@ -627,14 +633,8 @@ public class MyServer {
                     int indexOfConditionField = catalogHandler.getIndexOfAttribute(databaseName, tableName, condition[0]);
                     boolean aux = false;
                     switch (condition[1]) {
-                        case "=" -> {
-                            if (indexOfConditionField < nrOfPrimaryKeys) {
-                                System.out.println(id[indexOfConditionField] + " = " + condition[2]);
-                            } else {
-                                System.out.println(values[indexOfConditionField - nrOfPrimaryKeys] + " = " + condition[2]);
-                            }
-                            aux = (indexOfConditionField < nrOfPrimaryKeys) ? Objects.equals(id[indexOfConditionField], condition[2]) : Objects.equals(values[indexOfConditionField - nrOfPrimaryKeys], condition[2]);
-                        }
+                        case "=" ->
+                                aux = (indexOfConditionField < nrOfPrimaryKeys) ? Objects.equals(id[indexOfConditionField], condition[2]) : Objects.equals(values[indexOfConditionField - nrOfPrimaryKeys], condition[2]);
                         case ">" ->
                                 aux = (indexOfConditionField < nrOfPrimaryKeys) ? Integer.parseInt(id[indexOfConditionField]) > Integer.parseInt(condition[2]) : Integer.parseInt(values[indexOfConditionField - nrOfPrimaryKeys]) > Integer.parseInt(condition[2]);
                         case ">=" ->
@@ -664,13 +664,32 @@ public class MyServer {
         }
 
         fields = (Objects.equals(fields.get(0), "*")) ? new ArrayList<>(Arrays.asList(stringOfAttributes)) : fields;
-        for (Dictionary<String, String> dictionary : dictionaries) {
-            for (String field : fields) {
-                String value = dictionary.get(field);
-                System.out.println("Field: " + field + ", Value: " + value);
-            }
-            System.out.println();
+
+        StringBuilder fieldNames = new StringBuilder();
+        fieldNames.append(" ").append("#");
+        for (String field : fields) {
+            fieldNames.append(field).append("#");
         }
+        fieldNames.deleteCharAt(fieldNames.length() - 1);
+        writeIntoSocket(fieldNames.toString());
+
+        int nr = 1;
+        StringBuilder values = new StringBuilder();
+        for (Dictionary<String, String> dictionary : dictionaries) {
+            values.append(nr).append(" ");
+            nr++;
+            for (String field : fields) {
+                values.append(dictionary.get(field)).append(" ");
+            }
+            values.deleteCharAt(values.length() - 1);
+            values.append("#");
+        }
+        if (values.length() == 0) {
+            writeIntoSocket("");
+            return;
+        }
+        values.deleteCharAt(values.length() - 1);
+        writeIntoSocket(values.toString());
     }
 
     public void select(String[] message) {

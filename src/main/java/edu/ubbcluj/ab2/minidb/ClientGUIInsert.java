@@ -50,7 +50,7 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
         }
 
         valuesTextArea = new JTextArea("", 10, 40);
-        valuesTextArea.setEditable(false);
+        valuesTextArea.setEditable(true);
         JScrollPane scrollPane = new JScrollPane(valuesTextArea);
 
         addValuesButton = new JButton("Add Values");
@@ -121,7 +121,13 @@ public class ClientGUIInsert extends JPanel implements ActionListener {
             } else {
                 String databaseName = (String) databaseComboBox.getSelectedItem();
                 String tableName = (String) tableComboBox.getSelectedItem();
-                String query = "INSERT INTO " + databaseName + "." + tableName + "\nVALUES " + values + ";";
+                String query;
+                if(valuesTextArea.isEditable()){
+                    query = "INSERT INTO " + databaseName + "." + tableName + "\nVALUES " + valuesTextArea.getText() + ";";
+                }
+                else{
+                    query = "INSERT INTO " + databaseName + "." + tableName + "\nVALUES " + values + ";";
+                }
                 JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
                 clientInterface.writeIntoSocket(query);
                 valuesTextArea.setText("");

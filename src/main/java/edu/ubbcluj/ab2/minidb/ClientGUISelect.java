@@ -1,6 +1,8 @@
 package edu.ubbcluj.ab2.minidb;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
     private JTextField condition;
     private JButton backButton;
     private JTextArea selectQuery;
+    private JTable resultsTable;
 
 
     public ClientGUISelect(ClientInterface clientInterface) {
@@ -85,11 +88,25 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         selectPanel.add(new JLabel("Select statement:"), BorderLayout.NORTH);
         selectPanel.add(scrollPane, BorderLayout.CENTER);
 
+        JPanel resultsPanel = new JPanel(new BorderLayout());
+        //resultsPanel.setPreferredSize(new Dimension(500, 800));
+        resultsPanel.add(new JLabel("\n RESULTS"), BorderLayout.NORTH);
+
+        resultsTable = new JTable();
+        JScrollPane scrollResults = new JScrollPane(resultsTable);
+        scrollResults.setPreferredSize(new Dimension(500, 740));
+        resultsPanel.add(scrollResults, BorderLayout.SOUTH);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setSize(500, 800);
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        panel.add(inputPanel, BorderLayout.NORTH);
+        panel.add(buttonPanel, BorderLayout.CENTER);
+        panel.add(selectPanel, BorderLayout.SOUTH);
+
         this.setLayout(new BorderLayout());
-        this.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        this.add(inputPanel, BorderLayout.NORTH);
-        this.add(buttonPanel, BorderLayout.CENTER);
-        this.add(selectPanel, BorderLayout.SOUTH);
+        this.add(panel, BorderLayout.WEST);
+        this.add(resultsPanel, BorderLayout.EAST);
 
         this.setVisible(true);
     }
@@ -101,9 +118,6 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             updateWhere();
         } else if (e.getSource() == tableComboBox) {
             updateWhere();
-            // TODO: jelenitse meg hogy az adott tablaban milyen attr-ok vannal
-            // updateTextFields();
-
         } else if (e.getSource() == conditionField) {
             updateOperators();
         } else if (e.getSource() == addConditionButton) {
@@ -127,8 +141,11 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         } else if (e.getSource() == submitButton) {
             JOptionPane.showMessageDialog(this, "SQL query:\n" + selectQuery.getText());
             clientInterface.writeIntoSocket(selectQuery.getText());
-            selectQuery.setText("");
+            updateQuery();
+            showResults();
         } else if (e.getSource() == backButton) {
+            resultsTable.setModel(new DefaultTableModel(0, 0));
+            clientInterface.setSize(500, 800);
             clientInterface.showMenu();
             selectQuery.setText("");
         }
@@ -221,6 +238,23 @@ public class ClientGUISelect extends JPanel implements ActionListener {
                 return i;
         }
         return -1;
+    }
+
+    public void showResults() {
+        Object[] columnNames = clientInterface.readFromSocket().split("#");
+        String values = clientInterface.readFromSocket();
+
+        resultsTable.setModel(new DefaultTableModel(columnNames, 0));
+        DefaultTableModel model = (DefaultTableModel) resultsTable.getModel();
+
+        // if there are no results
+        if (values.split("#")[0].equals("")) {
+            return;
+        }
+        for (String row : values.split("#")) {
+            model.addRow(row.split(" "));
+        }
+        model.fireTableDataChanged();
     }
 
     public MyComboBox getDatabaseComboBox() {
