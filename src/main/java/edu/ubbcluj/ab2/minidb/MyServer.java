@@ -6,12 +6,9 @@ import com.mongodb.MongoException;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
-import org.bson.conversions.Bson;
 import org.json.JSONObject;
-
 import java.io.*;
 import java.net.*;
-import java.sql.Struct;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -105,9 +102,7 @@ public class MyServer {
                     //TODO: (OPTIONAL) delete attributes, pks, fks
                 }
             }
-            case "SELECT" -> {
-                select(message);
-            }
+            case "SELECT" -> select(message);
             // if the client requests the name of the existent databases in the JSON file
             case "GETDATABASES" -> writeIntoSocket(catalogHandler.getStringOfDatabases());
             // if the client requests the name of the existent tables in a database(message[1]) in the JSON file
@@ -539,7 +534,6 @@ public class MyServer {
             e.printStackTrace();
         }
     }
-
     private void selectWithWhere(String databaseName, String tableName, ArrayList<String> fields, ArrayList<String> compareFields) {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> table = database.getCollection(tableName);
@@ -612,7 +606,7 @@ public class MyServer {
                                 aux = Integer.parseInt(dictionary.get(condition[0])) <= Integer.parseInt(condition[2]);
                     }
                     if (!aux) {
-                        isOkDocumentary = aux;
+                        isOkDocumentary = false;
                         break;
                     }
                 }
@@ -633,8 +627,14 @@ public class MyServer {
                     int indexOfConditionField = catalogHandler.getIndexOfAttribute(databaseName, tableName, condition[0]);
                     boolean aux = false;
                     switch (condition[1]) {
-                        case "=" ->
-                                aux = (indexOfConditionField < nrOfPrimaryKeys) ? Objects.equals(id[indexOfConditionField], condition[2]) : Objects.equals(values[indexOfConditionField - nrOfPrimaryKeys], condition[2]);
+                        case "=" -> {
+                            if (indexOfConditionField < nrOfPrimaryKeys) {
+                                System.out.println(id[indexOfConditionField] + " = " + condition[2]);
+                            } else {
+                                System.out.println(values[indexOfConditionField - nrOfPrimaryKeys] + " = " + condition[2]);
+                            }
+                            aux = (indexOfConditionField < nrOfPrimaryKeys) ? Objects.equals(id[indexOfConditionField], condition[2]) : Objects.equals(values[indexOfConditionField - nrOfPrimaryKeys], condition[2]);
+                        }
                         case ">" ->
                                 aux = (indexOfConditionField < nrOfPrimaryKeys) ? Integer.parseInt(id[indexOfConditionField]) > Integer.parseInt(condition[2]) : Integer.parseInt(values[indexOfConditionField - nrOfPrimaryKeys]) > Integer.parseInt(condition[2]);
                         case ">=" ->
@@ -645,7 +645,7 @@ public class MyServer {
                                 aux = (indexOfConditionField < nrOfPrimaryKeys) ? Integer.parseInt(id[indexOfConditionField]) <= Integer.parseInt(condition[2]) : Integer.parseInt(values[indexOfConditionField - nrOfPrimaryKeys]) <= Integer.parseInt(condition[2]);
                     }
                     if (!aux) {
-                        isOkDocument = aux;
+                        isOkDocument = false;
                         break;
                     }
                 }
@@ -670,6 +670,7 @@ public class MyServer {
         for (String field : fields) {
             fieldNames.append(field).append("#");
         }
+
         fieldNames.deleteCharAt(fieldNames.length() - 1);
         writeIntoSocket(fieldNames.toString());
 
@@ -692,11 +693,13 @@ public class MyServer {
         writeIntoSocket(values.toString());
     }
 
+
     public void select(String[] message) {
         try {
+            List<Dictionary<String, String>> dictionaries = new ArrayList<>();
             String databaseName, tableName, tableAlias = "";
             ArrayList<String> fields = new ArrayList<>();
-            HashMap<String, String> joinTables = new HashMap<>();
+            HashMap<String, String> aliasTables = new HashMap<>();
 
             int i = 1;
             while (!Objects.equals(message[i], "FROM")) {
@@ -709,70 +712,208 @@ public class MyServer {
             tableName = parts[1];
 
             if (i < message.length && (!Objects.equals(message[i], "INNER") || !Objects.equals(message[i], "WHERE"))) {
-                tableAlias = message[i];
+                tableAlias = message[i++];
+                aliasTables.put(tableAlias, tableName);
             }
 
-            ArrayList<String> joinThem = new ArrayList<>(); // minden sora t1.c1.. t2.c1
+            ArrayList<String> joinThem = new ArrayList<>(); // minden sora: joinDatabaseName, joinTableName, joinAliasTable, joinfieldName, fieldName
             while (i < message.length && Objects.equals(message[i], "INNER")) {
                 i += 2;   // INNER JOIN
-                String joinTableName = message[i++], joinTableAlias = "";
+                parts = message[i++].split("\\.");
+                String joinDatabaseName = (parts.length == 1) ? databaseName : parts[0];
+                String joinTableName = (parts.length == 1) ? parts[0] : parts[1], joinTableAlias = "";
                 if (!Objects.equals(message[i], "ON")) {
                     joinTableAlias = message[i++];
+                    if (aliasTables.containsKey(joinTableAlias)) {
+                        System.out.println("An error1 occurred while performing Select statement!\n");
+                        return;
+                    }
+                    aliasTables.put(joinTableAlias, joinTableName);
                 }
-                if (joinTables.containsKey(joinTableAlias)) {
-                    System.out.println("An error occurred while performing Select statement!\n");
-                    return;
-                }
-                joinTables.put(joinTableAlias, joinTableName);
+                i += 1;   // ON
 
                 String[] parts1 = message[i++].split("\\.");
                 String condition = message[i++];
                 String[] parts2 = message[i++].split("\\.");
-                if (!joinTables.containsKey(parts1[0]) || !joinTables.containsKey(parts2[0])) {
-                    System.out.println("An error occurred while performing Select statement!\n");
+                if (!aliasTables.containsKey(parts1[0]) || !aliasTables.containsKey(parts2[0])) {
+                    System.out.println("An error2 occurred while performing Select statement!\n");
                     return;
                 }
 
-                if (!Objects.equals(tableAlias, "")) {
-                    if (Objects.equals(tableAlias, parts1[0])) {
-                        System.out.println(tableName + "." + parts1[1] + " = " + joinTables.get(parts2[0]) + "." + parts2[1]);
+                if (Objects.equals(tableAlias, parts1[0])) {
+                    joinThem.add(joinDatabaseName + " " + joinTableName + " " + parts2[0] + " " + parts2[1] + " " + parts1[1]);
+                } else if (Objects.equals(tableAlias, parts2[0])) {
+                    joinThem.add(joinDatabaseName + " " + joinTableName + " " + parts1[0] + " " + parts1[1]);
+                } else {
+                    System.out.println("An error3 occurred while performing Select statement!\n");
+                    return;
+                }
+            }
+            joinTables(databaseName, tableName, tableAlias, joinThem, fields);
 
-//                    joinTables(databaseName, tableName, parts1[1], joinTables.get(parts2[0]), parts2[1], condition);
-                    } else if (Objects.equals(tableAlias, parts2[0])) {
-                        System.out.println(tableName + "." + parts2[1] + " = " + joinTables.get(parts1[0]) + "." + parts1[1]);
-//                    checkFieldsCondition(databaseName, tableName, parts2[1], joinTables.get(parts1[0]), parts1[1], condition);
+            if (i < message.length && Objects.equals(message[i], "WHERE")) {
+                ArrayList<String> compareFields = new ArrayList<>();
+                while (i < message.length && (Objects.equals(message[i], "WHERE") || Objects.equals(message[i], "AND"))) {
+                    i++;
+                    String[] parts1 = message[i++].split("\\.");
+                    String condition = message[i++];
+                    String parts2 = message[i++];
+                    if (parts1.length == 1) {
+                        compareFields.add(parts1[0] + " " + condition + " " + parts2);
                     } else {
-                        System.out.println("An error occurred while performing Select statement!\n");
-                        return;
-                    }
-                } else {
-                    System.out.println("An error occurred while performing Select statement!\n");
-                    return;
-                }
-            }
+                        if (!aliasTables.containsKey(parts1[0])) {
+                            System.out.println("An error occurred while performing Select statement!\n");
+                            return;
+                        }
 
-            ArrayList<String> compareFields = new ArrayList<>();
-            while (i < message.length && (Objects.equals(message[i], "WHERE") || Objects.equals(message[i], "AND"))) {
-                i++;
-                String[] parts1 = message[i++].split("\\.");
-                String condition = message[i++];
-                System.out.println(condition);
-                String parts2 = message[i++];
-                System.out.println(parts2);
-                if (parts1.length == 1) {
-                    compareFields.add(parts1[0] + " " + condition + " " + parts2);
-                } else {
-                    if (!joinTables.containsKey(parts1[0])) {
-                        System.out.println("An error occurred while performing Select statement!\n");
-                        return;
+                        compareFields.add(aliasTables.get(parts1[0]) + "." + Arrays.toString(parts1) + " " + condition + " " + parts2);
                     }
-
-                    compareFields.add(joinTables.get(parts1[0]) + "." + Arrays.toString(parts1) + " " + condition + " " + parts2);
                 }
+                selectWithWhere(databaseName, tableName, fields, compareFields);
             }
-            selectWithWhere(databaseName, tableName, fields, compareFields);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void joinTables(String databaseName, String tableName, String aliasTable, ArrayList<String> joinThem, ArrayList<String> fields) {
+        MongoDatabase database = mongoClient.getDatabase(databaseName);
+        MongoCollection<Document> table = database.getCollection(tableName);
+        FindIterable<Document> documents = table.find();
+
+        String indexNames = catalogHandler.getIndexNames(databaseName);
+        int nrOfAttributes = catalogHandler.getNumberOfAttributes(databaseName, tableName);
+        int nrOfPrimaryKeys = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
+        String[] stringOfAttributes = catalogHandler.getStringOfAttributes(databaseName, tableName).split(" ");
+
+        boolean everyField = Objects.equals(fields.get(0), "*");
+        if (everyField) {
+            fields.remove(fields.get(0));
+            Arrays.stream(stringOfAttributes).forEach(field -> fields.add(aliasTable + "." + field));
+        }
+
+        List<Dictionary<String, String>> dictionaries = new ArrayList<>();
+        joinThem.forEach(join -> {
+            // join[0] - joinDatabaseName, join[1] - joinTableName, join[2] - joinAliasTable, join[3] - joinFieldName, join[4] - fieldName
+            String joinDatabaseName = join.split(" ")[0];
+            String joinTableName = join.split(" ")[1];
+            String joinAliasTable = join.split(" ")[2];
+            String joinFieldName = join.split(" ")[3];
+            String fieldName = join.split(" ")[4];
+
+            MongoDatabase joinDatabase = (Objects.equals(databaseName, joinDatabaseName)) ? database : mongoClient.getDatabase(joinDatabaseName);
+            MongoCollection<Document> joinTable = joinDatabase.getCollection(joinTableName);
+
+            int indexJoinField = catalogHandler.getIndexOfAttribute(joinDatabaseName, joinTableName, joinFieldName);
+            int nrOfJoinPrimaryKeys = catalogHandler.getNumberOfPrimaryKeys(joinDatabaseName, joinTableName);
+            int nrOfJoinAttributes = catalogHandler.getNumberOfAttributes(joinDatabaseName, joinTableName);
+            String[] stringOfJoinAttributes = catalogHandler.getStringOfAttributes(joinDatabaseName, joinTableName).split(" ");
+
+            if (everyField) {
+                Arrays.stream(stringOfJoinAttributes).forEach(joinField -> fields.add(joinAliasTable + "." + joinField));
+            }
+
+            int indexField = catalogHandler.getIndexOfAttribute(databaseName, tableName, fieldName);
+
+            FindIterable<Document> joinDocuments = joinTable.find();
+            for (Document joinDocument : joinDocuments) {
+                String refValue = (indexJoinField < nrOfJoinPrimaryKeys) ? joinDocument.get("_id").toString().split("#")[indexJoinField] : joinDocument.get("value").toString().split("#")[indexJoinField - nrOfJoinPrimaryKeys];
+                for (Document document : documents) {
+                    String value = (indexField < nrOfPrimaryKeys) ? document.get("_id").toString().split("#")[indexField] : document.get("value").toString().split("#")[indexField - nrOfPrimaryKeys];
+
+                    if (Objects.equals(refValue, value)) {
+                        Dictionary<String, String> dictionary = new Hashtable<>();
+
+                        for (int i = 0; i < nrOfAttributes; i++) {
+                            if (i < nrOfPrimaryKeys) {
+                                dictionary.put((aliasTable + "." + stringOfAttributes[i]), document.get("_id").toString().split("#")[i]);
+                            } else {
+                                dictionary.put((aliasTable + "." + stringOfAttributes[i]), document.get("value").toString().split("#")[i - nrOfPrimaryKeys]);
+                            }
+                        }
+
+                        for (int i = 0; i < nrOfJoinAttributes; i++) {
+                            if (i < nrOfJoinPrimaryKeys) {
+                                dictionary.put((joinAliasTable + "." + stringOfJoinAttributes[i]), joinDocument.get("_id").toString().split("#")[i]);
+                            } else {
+                                dictionary.put((joinAliasTable + "." + stringOfJoinAttributes[i]), joinDocument.get("value").toString().split("#")[i - nrOfJoinPrimaryKeys]);
+                            }
+                        }
+
+                        dictionaries.add(dictionary);
+                    }
+//                    Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
+//                    if (indexName.contains(tableName)) {
+//                        if (indexName.contains(fieldName)) {
+//                            System.out.println(fieldName + " <- van index\n");
+//                            MongoCollection<Document> indexTable = database.getCollection(indexName);
+//                            FindIterable<Document> documents = indexTable.find(Filters.eq("_id", refValue));
+//
+//
+//                            for (Document document : documents) {
+//                                Arrays.stream(document.get("value").toString().split("#")).forEach((id) -> {
+//                                    String[] values = Objects.requireNonNull(table.find(Filters.eq("_id", id)).first()).get("value").toString().split("#");
+//
+//                                    Dictionary<String, String> dictionary = new Hashtable<>();
+//                                    for (int i = 0; i < nrOfAttributes; i++) {
+//                                        if (i < nrOfPrimaryKeys) {
+//                                            dictionary.put(stringOfAttributes[i], id.split("#")[i]);
+//                                        } else {
+//                                            dictionary.put(stringOfAttributes[i], values[i - nrOfPrimaryKeys]);
+//                                        }
+//                                    }
+//                                    dictionaries.add(dictionary);
+//                                });
+//                            }
+//                        }
+//                    }
+//                });
+                }
+
+            }
+        });
+
+//        if (dictionaries.isEmpty()) {
+//            String tableName = aliasTables.get(parts1[0]);
+//            String fieldName = parts1[1];
+//            String joinTableName = aliasTables.get(parts2[0]);
+//            String joinFieldName = parts2[1];
+//            MongoCollection<Document> table = database.getCollection(tableName);
+//            MongoCollection<Document> joinTable = joinDatabase.getCollection(joinTableName);
+//
+//            int nrOfAttributes = catalogHandler.getNumberOfAttributes(databaseName, tableName);
+//            int nrOfPrimaryKeys = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
+//            String[] stringOfAttributes = catalogHandler.getStringOfAttributes(databaseName, tableName).split(" ");
+//
+//
+//            FindIterable<Document> joinDocuments = joinTable.find();
+//            for (Document joinDocument : joinDocuments) {
+//                FindIterable<Document> documents = table.find(Filters.eq("_id", joinDocument.get("_id")));
+//                for (Document document : documents) {
+//                    String[] fields = document.get("value").toString().concat("#").concat(joinDocument.getString("value")).split("#");
+//
+//                    Dictionary<String, String> dictionary = new Hashtable<>();
+//                    for (int i = 0; i < nrOfAttributes; i++) {
+//                        if (i < nrOfPrimaryKeys) {
+////                            dictionary.put(stringOfAttributes[i], value.split("#")[i]);
+//                        } else {
+////                            dictionary.put(stringOfAttributes[i], values[i - nrOfPrimaryKeys]);
+//                        }
+//                    }
+//                    dictionaries.add(dictionary);
+//                }
+//            }
+//
+//        }
+
+
+        for (Dictionary<String, String> dictionary : dictionaries) {
+            for (String field : fields) {
+                String value = dictionary.get(field);
+
+                System.out.println("Field: " + field + ", Value: " + value);
+            }
+            System.out.println();
         }
     }
 }
