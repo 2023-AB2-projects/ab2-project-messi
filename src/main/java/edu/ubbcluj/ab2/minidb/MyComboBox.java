@@ -7,10 +7,8 @@ public class MyComboBox extends JComboBox<String> {
 
     public MyComboBox(String listOfNames) {
         String[] elements = listOfNames.split(" ");
-        Arrays.sort(elements);
 
         this.setEnabled(true);
-        Arrays.sort(elements);
         for (String element : elements) {
             this.addItem(element);
         }
@@ -19,10 +17,8 @@ public class MyComboBox extends JComboBox<String> {
     // exclude name from the list
     public MyComboBox(String listOfNames, String name) {
         String[] elements = listOfNames.split(" ");
-        Arrays.sort(elements);
 
         this.setEnabled(true);
-        Arrays.sort(elements);
         for (String element : elements) {
             if (!name.equals(element)) {
                 this.addItem(element);
@@ -33,10 +29,7 @@ public class MyComboBox extends JComboBox<String> {
     // exclude name from the list, put alias in front of attributes
     public MyComboBox(String listOfNames, String name, String alias) {
         String[] elements = listOfNames.split(" ");
-        Arrays.sort(elements);
-
         this.setEnabled(true);
-        Arrays.sort(elements);
         for (String element : elements) {
             if (!name.equals(element)) {
                 this.addItem(alias + "." + element);
@@ -49,7 +42,6 @@ public class MyComboBox extends JComboBox<String> {
         String[] elements = listOfNames.split(" ");
 
         this.setEnabled(true);
-        Arrays.sort(elements);
         for (String element : elements) {
             this.addItem(element);
         }
@@ -61,7 +53,6 @@ public class MyComboBox extends JComboBox<String> {
         String[] elements = listOfNames.split(" ");
 
         this.setEnabled(true);
-        Arrays.sort(elements);
         for (String element : elements) {
             if (!name.equals(element)) {
                 this.addItem(element);
@@ -75,7 +66,6 @@ public class MyComboBox extends JComboBox<String> {
         String[] elements = listOfNames.split(" ");
 
         this.setEnabled(true);
-        Arrays.sort(elements);
         for (String element : elements) {
             if (!name.equals(element)) {
                 this.addItem(alias + "." + element);

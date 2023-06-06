@@ -71,6 +71,9 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
         fkCheckBox.addActionListener(this);
         pkCheckBox.addActionListener(this);
         uniqueCheckBox.addActionListener(this);
+        databaseComboBox.addActionListener(this);
+        fkToTableBox.addActionListener(this);
+
 
         JPanel inputPanel = new JPanel(new GridLayout(8, 2, 5, 5));
         inputPanel.add(databaseNameLabel);
@@ -232,11 +235,6 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
             pkCheckBox.setEnabled(!pkCheckBox.isEnabled());
         } else if (e.getSource() == pkCheckBox) {
             uniqueCheckBox.setEnabled(!uniqueCheckBox.isEnabled());
-        } else if (e.getSource() == fkToTableBox) {
-            if (fkToTableBox.getSelectedItem() != null) {
-                fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
-                fkToTableBox.setSelectedIndex(0);
-            }
         } else if (e.getSource() == clearAllButton) {
             tableNameField.setText("");
             columnNameField.setText("");
@@ -254,6 +252,14 @@ public class ClientGUICreateTable extends JPanel implements ActionListener {
 
         } else if (e.getSource() == backButton) {
             clientInterface.showMenu();
+        } else if (e.getSource() == databaseComboBox) {
+            fkToTableBox.updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
+            fkToTableBox.setSelectedIndex(0);
+            fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
+            fkToColumnBox.setSelectedIndex(0);
+        } else if (e.getSource() == fkToTableBox) {
+            fkToColumnBox.updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) fkToTableBox.getSelectedItem()));
+            fkToColumnBox.setSelectedIndex(0);
         }
     }
 

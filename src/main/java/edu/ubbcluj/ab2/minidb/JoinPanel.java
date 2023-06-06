@@ -27,11 +27,11 @@ public class JoinPanel extends JPanel implements ActionListener {
 
         this.addComponent(new JLabel("INNER JOIN"), 100, 20);
         this.addComponent(joinOn, 100, 20);
-        this.addComponent(new JLabel("AS"), 15, 20);
+        this.addComponent(new JLabel("AS"), 30, 20);
         this.addComponent(alias, 50, 20);
-        this.addComponent(new JLabel("ON"), 20, 20);
+        this.addComponent(new JLabel("ON"), 30, 20);
         this.addComponent(attrOfJoinedTable, 100, 20);
-        this.addComponent(new JLabel("="), 10, 20);
+        this.addComponent(new JLabel("="), 20, 20);
         this.addComponent(attrOfMainTable, 100, 20);
 
         Dimension d = new Dimension(680, 40);
