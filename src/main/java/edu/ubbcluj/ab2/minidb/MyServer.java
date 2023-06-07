@@ -13,7 +13,6 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
@@ -67,8 +66,10 @@ public class MyServer {
             return;
         }
         String[] message = query.split(" ");
+//        String[] message = "SELECT l.Id s.Id FROM School.Students s INNER JOIN Location l ON l.Id = s.FK_LocID WHERE l.Street = Paris".split(" ");
+//        String[] message = "SELECT AVG FK_LocID FROM School.Students GROUP BY FK_LocID".split(" ");
 //        String[] message = "SELECT s.Id s.Name l.StrSELECT * FROM School.Students s INNER JOIN Location l ON l.Id = s.FK_LocID WHERE Street = Paris joinTableseet t.Name FROM School.Location l INNER JOIN School.Student s ON l.Id = s.LocId".split(" ");
-//        String[] message = "SELECT * FROM School.Students s INNER JOIN Location l ON l.Id = s.FK_LocID WHERE l.Street = Paris joinTables".split(" ");
+//        String[] message = "SELECT * FROM School.Students s INNER JOIN Location l ON l.Id = s.FK_LocID WHERE l.Street = Paris".split(" ");
         System.out.print("\nmessage: ");
         for (String i : message) {
             System.out.print(i + " ");
@@ -136,7 +137,7 @@ public class MyServer {
             }
             case "GETFIELDTYPE" -> {
                 if (message.length == 4) {
-                    if (catalogHandler.getAttributeType(message[1], message[2], message[3]) == 0) {
+                    if (catalogHandler.isValidAttributeType(message[1], message[2], message[3]) == 0) {
                         writeIntoSocket("NUMERIC");
                     } else {
                         writeIntoSocket("NOT NUMERIC");
@@ -355,12 +356,11 @@ public class MyServer {
                             .toArray();
 
                     // nem jo indextablaba-ba vagyunk
-                    for(int index : indexOfFields) {
-                        if(index < 0) {
+                    for (int index : indexOfFields) {
+                        if (index < 0) {
                             return;
                         }
                     }
-                    System.out.println(Arrays.toString(indexOfFields));
 
                     MongoCollection<Document> indexTable = database.getCollection(indexName);
                     String[] values = value.split("#");
@@ -503,7 +503,6 @@ public class MyServer {
                             unique.append(value.toString().split("#")[k]);
                         }
                         unique = new StringBuilder(String.join("#", unique.toString()));
-                        System.out.println(unique);
                         AtomicBoolean atomicBoolean = existsIndex(unique.toString(), databaseName, tableName);
                         if (atomicBoolean.get()) {
                             System.out.println("\nUnique key(s): " + unique + " already defined\n");
@@ -548,11 +547,10 @@ public class MyServer {
         }
     }
 
-    private void normalSelect(String databaseName, String tableName, ArrayList<String> compareFields) {
+    private void normalSelect(String databaseName, String tableName, ArrayList<String> compareFields, String groupByField, ArrayList<String> aggregates) {
         try {
             MongoDatabase database = mongoClient.getDatabase(databaseName);
             MongoCollection<Document> table = database.getCollection(tableName);
-            System.out.println(compareFields.toString());
 
             int nrOfAttributes = catalogHandler.getNumberOfAttributes(databaseName, tableName);
             int nrOfPrimaryKeys = catalogHandler.getNumberOfPrimaryKeys(databaseName, tableName);
@@ -571,7 +569,6 @@ public class MyServer {
                     Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
                         if (indexName.contains(tableName)) {
                             if (indexName.contains(condition[0])) {
-                                System.out.println(compareField + " <- van index\n");
                                 MongoCollection<Document> indexTable = database.getCollection(indexName);
 
                                 FindIterable<Document> documents = indexTable.find(Filters.eq("_id", condition[2]));
@@ -606,7 +603,6 @@ public class MyServer {
                     Dictionary<String, String> dictionary = iterator.next();
                     boolean isOkDocumentary = true;
                     for (String compareField : remainedCompareFields) {
-                        System.out.println(compareField);
                         // condition[0] - field, condition[1] - operator, condition[2] - compareTo
                         String[] condition = compareField.split(" ");
 
@@ -680,32 +676,134 @@ public class MyServer {
                 });
             }
 
-            StringBuilder fieldNames = new StringBuilder();
-            fieldNames.append(" ").append("#");
-            for (String field : selectFields) {
-                fieldNames.append(field).append("#");
-            }
-
-            fieldNames.deleteCharAt(fieldNames.length() - 1);
-            writeIntoSocket(fieldNames.toString());
-
-            int nr = 1;
-            StringBuilder values = new StringBuilder();
-            for (Dictionary<String, String> dictionary : dictionaries) {
-                values.append(nr).append(" ");
-                nr++;
-                for (String field : selectFields) {
-                    values.append(dictionary.get(field)).append(" ");
+            if (!Objects.equals(groupByField, "")) {
+                Map<String, List<Dictionary<String, String>>> groupedData = new HashMap<>();
+                for (Dictionary<String, String> dictionary : dictionaries) {
+                    String key = dictionary.get(groupByField);
+                    if (groupedData.containsKey(key)) {
+                        groupedData.get(key).add(dictionary);
+                    } else {
+                        List<Dictionary<String, String>> newList = new ArrayList<>();
+                        newList.add(dictionary);
+                        groupedData.put(key, newList);
+                    }
                 }
-                values.deleteCharAt(values.length() - 1);
-                values.append("#");
+
+                if (!aggregates.isEmpty()) {
+                    List<Dictionary<String, String>> newDictionaries = new ArrayList<>();
+                    for (String key : groupedData.keySet()) {
+                        List<Dictionary<String, String>> list = groupedData.get(key);
+                        for (String s : aggregates) {
+                            String[] parts = s.split(" ");
+                            String fieldName = parts[0];   // field OR alias.field
+                            String fieldType = parts[1];
+                            String aggregate = parts[2];
+                            String result = aggregateFunction(list, fieldName, fieldType, aggregate);
+                            if (aggregate.equals("MIN") || aggregate.equals("MAX") || aggregate.equals("COUNT")) {
+                                for (Dictionary<String, String> dictionary : list) {
+                                    if (Objects.equals(dictionary.get(fieldName), result)) {
+                                        dictionary.put((aggregate + "(" + fieldName + ")"), result);
+                                        newDictionaries.add(dictionary);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (aggregate.equals("COUNT") || aggregate.equals("AVG") || aggregate.equals("SUM")) {
+                                Dictionary<String, String> aggregateDictionary = list.get(0);
+                                aggregateDictionary.put((aggregate + "(" + fieldName + ")"), result);
+                                newDictionaries.add(aggregateDictionary);
+                            }
+                        }
+                    }
+                    for (Dictionary<String, String> dictionary : newDictionaries) {
+                        for (String field : selectFields) {
+                            String value = dictionary.get(field);
+                            System.out.println("Field: " + field + ", Value: " + value);
+                        }
+                        System.out.println();
+                    }
+                } else {
+                    for (Map.Entry<String, List<Dictionary<String, String>>> entry : groupedData.entrySet()) {
+                        String key = entry.getKey(); // Get the key of the current entry
+                        List<Dictionary<String, String>> values = entry.getValue(); // Get the list of values for the current key
+
+                        System.out.println("Key: " + key);
+
+                        // Iterate over the list of values
+                        for (Dictionary<String, String> dictionary : values) {
+                            // Iterate over the entries in the dictionary
+                            Enumeration<String> dictKeys = dictionary.keys();
+                            while (dictKeys.hasMoreElements()) {
+                                String dictKey = dictKeys.nextElement();
+                                String dictValue = dictionary.get(dictKey);
+                                System.out.println("  " + dictKey + ": " + dictValue);
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (!aggregates.isEmpty()) {
+                    List<Dictionary<String, String>> newDictionaries = new ArrayList<>();
+                    for (String s : aggregates) {
+                        String[] parts = s.split(" ");
+                        String fieldName = parts[0];   // field OR alias.field
+                        String fieldType = parts[1];
+                        String aggregate = parts[2];
+                        String result = aggregateFunction(dictionaries, fieldName, fieldType, aggregate);
+                        if (aggregate.equals("MIN") || aggregate.equals("MAX") || aggregate.equals("COUNT")) {
+                            for (Dictionary<String, String> dictionary : dictionaries) {
+                                if (Objects.equals(dictionary.get(fieldName), result)) {
+                                    dictionary.put((aggregate + "(" + fieldName + ")"), result);
+                                    newDictionaries.add(dictionary);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    for (Dictionary<String, String> dictionary : newDictionaries) {
+                        for (String field : selectFields) {
+                            String value = dictionary.get(field);
+                            System.out.println("Field: " + field + ", Value: " + value);
+                        }
+                        System.out.println();
+                    }
+                }else{
+                    for (Dictionary<String, String> dictionary : dictionaries) {
+                        for (String field : selectFields) {
+                            String value = dictionary.get(field);
+                            System.out.println("Field: " + field + ", Value: " + value);
+                        }
+                        System.out.println();
+                    }
+                }
             }
-            if (values.length() == 0) {
-                writeIntoSocket("");
-                return;
-            }
-            values.deleteCharAt(values.length() - 1);
-            writeIntoSocket(values.toString());
+
+//            StringBuilder fieldNames = new StringBuilder();
+//            fieldNames.append(" ").append("#");
+//            for (String field : selectFields) {
+//                fieldNames.append(field).append("#");
+//            }
+//
+//            fieldNames.deleteCharAt(fieldNames.length() - 1);
+//            writeIntoSocket(fieldNames.toString());
+//
+//            int nr = 1;
+//            StringBuilder values = new StringBuilder();
+//            for (Dictionary<String, String> dictionary : dictionaries) {
+//                values.append(nr).append(" ");
+//                nr++;
+//                for (String field : selectFields) {
+//                    values.append(dictionary.get(field)).append(" ");
+//                }
+//                values.deleteCharAt(values.length() - 1);
+//                values.append("#");
+//            }
+//            if (values.length() == 0) {
+//                writeIntoSocket("");
+//                return;
+//            }
+//            values.deleteCharAt(values.length() - 1);
+//            writeIntoSocket(values.toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -717,11 +815,18 @@ public class MyServer {
             List<Dictionary<String, String>> dictionaries = new ArrayList<>();
             String databaseName, tableName, tableAlias = "";
             selectFields = new ArrayList<>();
+            ArrayList<String> aggregates = new ArrayList<>();
             HashMap<String, String> aliasTables = new HashMap<>();
 
             int i = 1;
             while (!Objects.equals(message[i], "FROM")) {
-                selectFields.add(message[i++]);
+                if (Objects.equals(message[i], "MIN") || Objects.equals(message[i], "MAX") || Objects.equals(message[i], "AVG") || Objects.equals(message[i], "COUNT") || Objects.equals(message[i], "SUM")) {
+                    aggregates.add(message[i + 1] + "." + message[i]);
+                    selectFields.add(message[i] + "(" + message[i + 1] + ")");
+                    i += 2;
+                } else {
+                    selectFields.add(message[i++]);
+                }
             }
             i++; //FROM
 
@@ -729,7 +834,7 @@ public class MyServer {
             databaseName = parts[0];
             tableName = parts[1];
 
-            if (i < message.length && (!Objects.equals(message[i], "INNER") && !Objects.equals(message[i], "WHERE"))) {
+            if (i < message.length && (!Objects.equals(message[i], "INNER") && !Objects.equals(message[i], "WHERE") && !Objects.equals(message[i], "GROUP"))) {
                 tableAlias = message[i++];
                 aliasTables.put(tableAlias, tableName);
             }
@@ -773,14 +878,11 @@ public class MyServer {
                 dictionaries = joinTables(databaseName, tableName, tableAlias, joinThem);
             }
 
-            System.out.println("Where: " + tableAlias);
             ArrayList<String> compareFields = new ArrayList<>();
             if (i < message.length && Objects.equals(message[i], "WHERE")) {
                 while (i < message.length && (Objects.equals(message[i], "WHERE") || Objects.equals(message[i], "AND"))) {
                     i++;
-                    System.out.println("awdq:" + message[i]);
                     String[] parts1 = message[i++].split("\\.");
-                    System.out.println(parts1[0]);
                     String condition = message[i++];
                     String parts2 = message[i++];
                     if (parts1.length == 1) {
@@ -794,17 +896,38 @@ public class MyServer {
                     }
                 }
             }
+
+            String groupByField = "";
+            if (i < message.length && Objects.equals(message[i], "GROUP")) {
+                i += 2; // GROUP BY
+                groupByField = message[i++];
+            }
+
             if (!wasJoin) {
-                normalSelect(databaseName, tableName, compareFields);
+                ArrayList<String> finalAggregates = new ArrayList<>();
+                for (String aggregate : aggregates) {
+                    parts = aggregate.split("\\.");
+                    String fieldType = catalogHandler.getAttributeType(databaseName, tableName, parts[0]);
+                    finalAggregates.add(parts[0] + " " + fieldType + " " + parts[1]);
+                }
+                normalSelect(databaseName, tableName, compareFields, groupByField, finalAggregates);
             } else {
-                complexSelect(dictionaries, compareFields);
+                ArrayList<String> finalAggregates = new ArrayList<>();
+                for (String aggregate : aggregates) {
+                    parts = aggregate.split("\\.");
+                    String fieldType = catalogHandler.getAttributeType(databaseName, aliasTables.get(parts[0]), parts[1]);
+                    finalAggregates.add(parts[0] + "." + parts[1] + " " + fieldType + " " + parts[2]);
+                }
+                complexSelect(dictionaries, compareFields, groupByField, finalAggregates);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void complexSelect(List<Dictionary<String, String>> dictionaries, ArrayList<String> compareFields) {
+    private void complexSelect
+            (List<Dictionary<String, String>> dictionaries, ArrayList<String> compareFields, String
+                    groupByField, ArrayList<String> aggregates) {
         List<Dictionary<String, String>> newDictionaries = new ArrayList<>();
         for (Dictionary<String, String> dictionary : dictionaries) {
             boolean isDictionaryGood = true;
@@ -821,47 +944,123 @@ public class MyServer {
             }
         }
 
-        StringBuilder fieldNames = new StringBuilder();
-        fieldNames.append(" ").append("#");
-        for (String field : selectFields) {
-            fieldNames.append(field).append("#");
-        }
-
-        fieldNames.deleteCharAt(fieldNames.length() - 1);
-        writeIntoSocket(fieldNames.toString());
-
-        int nr = 1;
-        StringBuilder values = new StringBuilder();
-        for (Dictionary<String, String> dictionary : newDictionaries) {
-            values.append(nr).append(" ");
-            nr++;
-            for (String field : selectFields) {
-                values.append(dictionary.get(field)).append(" ");
+        if (!Objects.equals(groupByField, "")) {
+            Map<String, List<Dictionary<String, String>>> groupedData = new HashMap<>();
+            for (Dictionary<String, String> dictionary : newDictionaries) {
+                String key = dictionary.get(groupByField);
+                if (groupedData.containsKey(key)) {
+                    groupedData.get(key).add(dictionary);
+                } else {
+                    List<Dictionary<String, String>> newList = new ArrayList<>();
+                    newList.add(dictionary);
+                    groupedData.put(key, newList);
+                }
             }
-            values.deleteCharAt(values.length() - 1);
-            values.append("#");
-        }
-        if (values.length() == 0) {
-            writeIntoSocket("");
-            return;
-        }
-        values.deleteCharAt(values.length() - 1);
-        System.out.println(values.toString());
-        writeIntoSocket(values.toString());
 
 
-        System.out.println("------------------------------------");
-        for (Dictionary<String, String> dictionary : newDictionaries) {
-            for (String field : selectFields) {
-                String value = dictionary.get(field);
+            if (!aggregates.isEmpty()) {
+                List<Dictionary<String, String>> newestDictionaries = new ArrayList<>();
+                for (String key : groupedData.keySet()) {
+                    List<Dictionary<String, String>> list = groupedData.get(key);
+                    for (String s : aggregates) {
+                        String[] parts = s.split(" ");
+                        String fieldName = parts[0];   // field OR alias.field
+                        String fieldType = parts[1];
+                        String aggregate = parts[2];
+                        String result = aggregateFunction(list, fieldName, fieldType, aggregate);
+                        if (aggregate.equals("MIN") || aggregate.equals("MAX")) {
+                            for (Dictionary<String, String> dictionary : list) {
+                                if (Objects.equals(dictionary.get(fieldName), result)) {
+                                    dictionary.put((aggregate + "(" + fieldName + ")"), result);
+                                    newestDictionaries.add(dictionary);
+                                    break;
+                                }
+                            }
+                        } else if (aggregate.equals("COUNT") || aggregate.equals("AVG") || aggregate.equals("SUM")) {
+                            Dictionary<String, String> aggregateDictionary = list.get(0);
+                            aggregateDictionary.put((aggregate + "(" + fieldName + ")"), result);
+                            newestDictionaries.add(aggregateDictionary);
+                        }
+                    }
+                }
+                for (Dictionary<String, String> dictionary : newestDictionaries) {
+                    for (String field : selectFields) {
+                        String value = dictionary.get(field);
+                        System.out.println("Field: " + field + ", Value: " + value);
+                    }
+                    System.out.println();
+                }
+            } else {
+                for (Map.Entry<String, List<Dictionary<String, String>>> entry : groupedData.entrySet()) {
+                    String key = entry.getKey(); // Get the key of the current entry
+                    List<Dictionary<String, String>> values = entry.getValue(); // Get the list of values for the current key
 
-                System.out.println("Field: " + field + ", Value: " + value);
+                    System.out.println("Key: " + key);
+
+                    // Iterate over the list of values
+                    for (Dictionary<String, String> dictionary : values) {
+                        // Iterate over the entries in the dictionary
+                        Enumeration<String> dictKeys = dictionary.keys();
+                        while (dictKeys.hasMoreElements()) {
+                            String dictKey = dictKeys.nextElement();
+                            String dictValue = dictionary.get(dictKey);
+                            System.out.println("  " + dictKey + ": " + dictValue);
+                        }
+                    }
+                }
             }
-            System.out.println();
+        } else {
+            for (Dictionary<String, String> dictionary : newDictionaries) {
+                for (String field : selectFields) {
+                    String value = dictionary.get(field);
+                    System.out.println("Field: " + field + ", Value: " + value);
+                }
+                System.out.println();
+            }
         }
+
+//        StringBuilder fieldNames = new StringBuilder();
+//        fieldNames.append(" ").append("#");
+//        for (String field : selectFields) {
+//            fieldNames.append(field).append("#");
+//        }
+//
+//        fieldNames.deleteCharAt(fieldNames.length() - 1);
+//        writeIntoSocket(fieldNames.toString());
+//
+//        int nr = 1;
+//        StringBuilder values = new StringBuilder();
+//        for (Dictionary<String, String> dictionary : newDictionaries) {
+//            values.append(nr).append(" ");
+//            nr++;
+//            for (String field : selectFields) {
+//                values.append(dictionary.get(field)).append(" ");
+//            }
+//            values.deleteCharAt(values.length() - 1);
+//            values.append("#");
+//        }
+//        if (values.length() == 0) {
+//            writeIntoSocket("");
+//            return;
+//        }
+//        values.deleteCharAt(values.length() - 1);
+//        System.out.println(values.toString());
+//        writeIntoSocket(values.toString());
+//
+//
+//        System.out.println("------------------------------------");
+//        for (Dictionary<String, String> dictionary : newDictionaries) {
+//            for (String field : selectFields) {
+//                String value = dictionary.get(field);
+//
+//                System.out.println("Field: " + field + ", Value: " + value);
+//            }
+//            System.out.println();
+//        }
     }
 
-    private List<Dictionary<String, String>> joinTables(String databaseName, String tableName, String aliasTable, ArrayList<String> joinThem) {
+    private List<Dictionary<String, String>> joinTables(String databaseName, String tableName, String
+            aliasTable, ArrayList<String> joinThem) {
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> table = database.getCollection(tableName);
         FindIterable<Document> documents = table.find();
@@ -934,7 +1133,6 @@ public class MyServer {
         if (!joinThem.isEmpty()) {
             for (int k = 1; k < joinThem.size(); k++) {
                 String join = joinThem.get(k);
-                System.out.println(join);
                 Iterator<Dictionary<String, String>> iterator = dictionaries.iterator();
                 while (iterator.hasNext()) {
                     Dictionary<String, String> dictionary = iterator.next();
@@ -957,7 +1155,6 @@ public class MyServer {
                             break;
                         }
                     }
-                    System.out.println(targetKey);
 
                     String key = targetKey;    // "alias.field"
                     String value = dictionary.get(key); // "field's value"
@@ -995,13 +1192,124 @@ public class MyServer {
                     }
 
                     if (!foundMatchingValue) {
-                        System.out.println("toroltem ezt az dict-et");
                         iterator.remove(); // Remove the current dictionary from the list
                     }
                 }
             }
         }
         return dictionaries;
+    }
+
+    public String aggregateFunction(List<Dictionary<String, String>> dictionaries, String fieldName, String
+            fieldType, String aggregate) {
+        String result = "";
+
+        ArrayList<String> values = new ArrayList<>();
+        dictionaries.forEach((dictionary) -> values.add(dictionary.get(fieldName)));
+        switch (aggregate) {
+            case "MIN" -> {
+                switch (fieldType) {
+                    case "VARCHAR" -> {
+                        String minimum = values.stream()
+                                .min(String::compareTo)
+                                .orElseThrow();
+                        result = minimum;
+                    }
+                    case "INT" -> {
+                        Integer minimum = values.stream()
+                                .map(Integer::parseInt)
+                                .min(Integer::compareTo)
+                                .orElseThrow();
+                        result = minimum.toString();
+                    }
+                    case "FLOAT" -> {
+                        Float minimum = values.stream()
+                                .map(Float::parseFloat)
+                                .min(Float::compareTo)
+                                .orElseThrow();
+                        result = minimum.toString();
+                    }
+                    default -> {
+                        System.out.println("You can not use the aggregate function: \"MIN\" for that type.");
+                        return null;
+                    }
+                }
+            }
+            case "MAX" -> {
+                switch (fieldType) {
+                    case "VARCHAR" -> {
+                        String minimum = values.stream()
+                                .max(String::compareTo)
+                                .orElseThrow();
+                        result = minimum;
+                    }
+                    case "INT" -> {
+                        Integer minimum = values.stream()
+                                .map(Integer::parseInt)
+                                .max(Integer::compareTo)
+                                .orElseThrow();
+                        result = minimum.toString();
+                    }
+                    case "FLOAT" -> {
+                        Float minimum = values.stream()
+                                .map(Float::parseFloat)
+                                .max(Float::compareTo)
+                                .orElseThrow();
+                        result = minimum.toString();
+                    }
+                    default -> {
+                        System.out.println("You can not use the aggregate function: \"MAX\" for that type.");
+                        return null;
+                    }
+                }
+            }
+            case "AVG" -> {
+                switch (fieldType) {
+                    case "INT" -> {
+                        double average = values.stream()
+                                .mapToInt(Integer::parseInt)
+                                .average()
+                                .orElseThrow();
+                        result = String.valueOf(average);
+                    }
+                    case "FLOAT" -> {
+                        double average = values.stream()
+                                .mapToDouble(Float::parseFloat)
+                                .average()
+                                .orElseThrow();
+                        result = String.valueOf(average);
+                    }
+                    default -> {
+                        System.out.println("You can not use the aggregate function: \"AVG\" for that type.");
+                        return null;
+                    }
+                }
+            }
+            case "COUNT" -> {
+                return String.valueOf(values.size());
+            }
+            case "SUM" -> {
+                switch (fieldType) {
+                    case "INT" -> {
+                        int sum = values.stream()
+                                .mapToInt(Integer::parseInt)
+                                .sum();
+                        result = String.valueOf(sum);
+                    }
+                    case "FLOAT" -> {
+                        double sum = values.stream()
+                                .mapToDouble(Float::parseFloat)
+                                .sum();
+                        result = String.valueOf(sum);
+                    }
+                    default -> {
+                        System.out.println("You can not use the aggregate function: \"SUM\" for that type.");
+                        return null;
+                    }
+                }
+            }
+        }
+        return result;
     }
 }
 //                    Arrays.stream(indexNames.split(" ")).forEach(indexName -> {
@@ -1063,5 +1371,6 @@ public class MyServer {
 //            }
 //
 //        }
+
 
 

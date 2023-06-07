@@ -34,7 +34,7 @@ public class JoinPanel extends JPanel implements ActionListener {
         this.addComponent(new JLabel("="), 20, 20);
         this.addComponent(attrOfMainTable, 100, 20);
 
-        Dimension d = new Dimension(680, 40);
+        Dimension d = new Dimension(680, 30);
         this.setMinimumSize(d);
         this.setMaximumSize(d);
         this.setPreferredSize(d);

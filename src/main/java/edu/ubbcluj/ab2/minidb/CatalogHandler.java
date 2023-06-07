@@ -85,7 +85,7 @@ public class CatalogHandler {
                 System.out.println("ERROR at creating the Index!");
                 System.out.println("The Index " + indexName + " already exists!");
             } else {
-                String[] aux =  fields.split(" ");
+                String[] aux = fields.split(" ");
                 index = d.new Index(d, indexName, aux);
             }
         } else {
@@ -450,7 +450,7 @@ public class CatalogHandler {
 
     public Root.Database.Table.UniqueKey getInstanceOfUnique(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = this.getInstanceOfTable(databaseName, tableName);
-        for (Root.Database.Table.UniqueKey u: t.uniqueKeys) {
+        for (Root.Database.Table.UniqueKey u : t.uniqueKeys) {
             if (Objects.equals(u.uqAttrName, attributeName)) {
                 return u;
             }
@@ -592,23 +592,36 @@ public class CatalogHandler {
     }
 
     // return -1 if error, else if attribute type is numeric, returns 0, otherwise returns 1
-    public int getAttributeType(String databaseName, String tableName, String attributeName){
+    public int isValidAttributeType(String databaseName, String tableName, String attributeName) {
         Root.Database.Table t = getInstanceOfTable(databaseName, tableName);
         if (t != null) {
             for (Root.Database.Table.Attribute a : t.attributes) {
                 if (Objects.equals(a.attrName, attributeName)) {
-                    if (Objects.equals(a.attrType, "INT") || Objects.equals(a.attrType, "FLOAT") || Objects.equals(a.attrType, "BIT")){
+                    if (Objects.equals(a.attrType, "INT") || Objects.equals(a.attrType, "FLOAT") || Objects.equals(a.attrType, "BIT")) {
                         return 0;
-                    }
-                    else{
+                    } else {
                         return 1;
                     }
                 }
             }
         } else {
-            System.out.println("ERROR at getting the type of an attribute in the specified table!");
+            System.out.println("ERROR at validating the type of an attribute in the specified table!");
             System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
         }
         return -1;
+    }
+
+    public String getAttributeType(String databaseName, String tableName, String attributeName) {
+        Root.Database.Table t = getInstanceOfTable(databaseName, tableName);
+        if (t != null) {
+            for (Root.Database.Table.Attribute a : t.attributes) {
+                if (Objects.equals(a.attrName, attributeName)) {
+                    return a.attrType;
+                }
+            }
+        }
+        System.out.println("ERROR at getting the type of an attribute in the specified table!");
+        System.out.println("The Table " + databaseName + "." + tableName + " does not exist!\n");
+        return "";
     }
 }
