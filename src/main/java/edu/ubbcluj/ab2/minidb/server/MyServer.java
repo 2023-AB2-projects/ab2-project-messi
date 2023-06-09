@@ -17,8 +17,6 @@ import java.util.stream.Collectors;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 
-// TODO: ha leallitjuk a klienst akkor a server tovabb fusson es varja az uzeneteket
-
 public class MyServer {
     private final String fileName = "./data.json";
     private ObjectInputStream objectInputStream;
@@ -767,7 +765,7 @@ public class MyServer {
                         }
                         System.out.println();
                     }
-                }else{
+                } else {
                     for (Dictionary<String, String> dictionary : dictionaries) {
                         for (String field : selectFields) {
                             String value = dictionary.get(field);

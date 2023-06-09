@@ -1,22 +1,27 @@
 package edu.ubbcluj.ab2.minidb;
 
+import edu.ubbcluj.ab2.minidb.client.ClientInterface;
+import edu.ubbcluj.ab2.minidb.models.MyComboBox;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class ClientGUICreateDatabase extends JPanel implements ActionListener {
+public class ClientGUIDropDatabase extends JPanel implements ActionListener {
     private ClientInterface clientInterface;
-    private JTextField textField;
     private JButton submitButton;
     private JButton backButton;
+    private MyComboBox databaseComboBox;
 
-    public ClientGUICreateDatabase(ClientInterface clientInterface) {
+    public ClientGUIDropDatabase(ClientInterface clientInterface) {
         this.clientInterface = clientInterface;
+
         this.setLayout(new GridLayout(2, 2));
 
         JLabel jlabel = new JLabel("Database Name: ");
-        textField = new JTextField();
+        databaseComboBox = new MyComboBox(clientInterface.getDatabasesNames());
+        databaseComboBox.setSelectedIndex(0);
         submitButton = new JButton("Submit");
         backButton = new JButton("Back");
 
@@ -24,7 +29,7 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
         backButton.addActionListener(this);
 
         this.add(jlabel);
-        this.add(textField);
+        this.add(databaseComboBox);
         this.add(backButton);
         this.add(submitButton);
         this.setVisible(true);
@@ -32,18 +37,17 @@ public class ClientGUICreateDatabase extends JPanel implements ActionListener {
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == submitButton) {
-            String databaseName = textField.getText();
-            if (databaseName.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "To create a database, ENTER a name.");
-            } else {
-                String query = "CREATE DATABASE " + databaseName + ";\n";
-                JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
-                textField.setText("");
-                clientInterface.writeIntoSocket(query);
-            }
+            String query = "DROP DATABASE " + databaseComboBox.getSelectedItem() + ";\n";
+            JOptionPane.showMessageDialog(this, "SQL query:\n" + query);
+            clientInterface.writeIntoSocket(query);
+            databaseComboBox.updateComboBox(clientInterface.getDatabasesNames());
+            databaseComboBox.setSelectedIndex(0);
         } else if (e.getSource() == backButton) {
-            textField.setText("");
             clientInterface.showMenu();
         }
+    }
+
+    public MyComboBox getDatabaseComboBox(){
+        return this.databaseComboBox;
     }
 }

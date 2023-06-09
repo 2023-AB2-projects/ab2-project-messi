@@ -1,5 +1,8 @@
 package edu.ubbcluj.ab2.minidb;
 
+import edu.ubbcluj.ab2.minidb.client.ClientInterface;
+import edu.ubbcluj.ab2.minidb.models.MyComboBox;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;

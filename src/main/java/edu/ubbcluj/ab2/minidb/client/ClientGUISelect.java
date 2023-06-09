@@ -13,14 +13,13 @@ public class ClientGUISelect extends JPanel implements ActionListener {
     private MyComboBox databaseComboBox;
     private MyComboBox tableComboBox;
     private JTextField alias;
-    private boolean wasAliasAltered = false;
     private JComboBox<String> fieldsList;
     private JPanel conditionPane;
     private JComboBox<String> conditionField;
     private JComboBox<String> operators;
     private JoinPanel joinPanel;
     private JPanel groupByPanel;
-    private JList<String> groupByList;
+    private JComboBox<String> groupByList;
     private JTextField condition;
     private JButton selectButton;
     private JButton addConditionButton;
@@ -177,13 +176,10 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         label.setPreferredSize(new Dimension(150, 20));
         groupByPanel.add(label);
 
-        groupByList = new JList<>(getFields(false));
-        groupByList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        groupByList = new JComboBox<>(getFields(false));
         groupByList.setPreferredSize(new Dimension(290, 0));
         groupByList.setSelectedIndex(0);
-        scrollPane = new JScrollPane(groupByList);
-        scrollPane.setPreferredSize(new Dimension(150, 40));
-        groupByPanel.add(scrollPane);
+        groupByPanel.add(groupByList);
         groupByPanel.setVisible(false);
 
         temp = new JPanel(new BorderLayout());
@@ -279,18 +275,8 @@ public class ClientGUISelect extends JPanel implements ActionListener {
     }
 
     public void updateAlias() {
-        if (!wasAliasAltered) {
+        if (!alias.getText().isBlank()) {
             joinPanel.getAttrOfMainTable().updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()), "", alias.getText());
-            updateFieldsList(true);
-            updateGroupByFields();
-            updateWhere();
-            wasAliasAltered = true;
-        } else if (!alias.getText().isBlank()) {
-            joinPanel.getAttrOfMainTable().updateComboBox(clientInterface.getFieldNames((String) databaseComboBox.getSelectedItem(), (String) tableComboBox.getSelectedItem()), "", alias.getText());
-            updateFieldsList(true);
-            updateGroupByFields();
-            updateWhere();
-        } else {
             updateFieldsList(true);
             updateGroupByFields();
             updateWhere();
@@ -306,7 +292,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         submitButton.addActionListener(this);
         backButton.addActionListener(this);
         clearAll.addActionListener(this);
-        groupByList.addListSelectionListener(e -> updateGroupByQuery());
+        groupByList.addActionListener(this);
         selectButton.addActionListener(this);
         aggFunctions.addActionListener(this);
         alias.addKeyListener(new KeyListener() {
@@ -316,11 +302,11 @@ public class ClientGUISelect extends JPanel implements ActionListener {
                     alias.setEditable(false);
                     aliasDict.put(alias.getText().strip(), (String) tableComboBox.getSelectedItem());
                     String[] query = selectQuery.getText().split("\n");
-                    String update = query[0] + "\n" + query[1] + " " + alias.getText();
+                    StringBuilder update = new StringBuilder(query[0] + "\n" + query[1] + " " + alias.getText());
                     for (int i = 2; i < query.length; i++) {
-                        update += "\n" + query[i];
+                        update.append("\n").append(query[i]);
                     }
-                    selectQuery.setText(update);
+                    selectQuery.setText(update.toString());
                 } else {
                     updateAlias();
                 }
@@ -331,6 +317,12 @@ public class ClientGUISelect extends JPanel implements ActionListener {
                 if (e.getKeyChar() == '\n') {
                     alias.setEditable(false);
                     aliasDict.put(alias.getText().strip(), (String) tableComboBox.getSelectedItem());
+//                    String[] query = selectQuery.getText().split("\n");
+//                    StringBuilder update = new StringBuilder(query[0] + "\n" + query[1] + " " + alias.getText());
+//                    for (int i = 2; i < query.length; i++) {
+//                        update.append("\n").append(query[i]);
+//                    }
+//                    selectQuery.setText(update.toString());
                 } else {
                     updateAlias();
                 }
@@ -341,6 +333,12 @@ public class ClientGUISelect extends JPanel implements ActionListener {
                 if (e.getKeyChar() == '\n') {
                     alias.setEditable(false);
                     aliasDict.put(alias.getText().strip(), (String) tableComboBox.getSelectedItem());
+//                    String[] query = selectQuery.getText().split("\n");
+//                    StringBuilder update = new StringBuilder(query[0] + "\n" + query[1] + " " + alias.getText());
+//                    for (int i = 2; i < query.length; i++) {
+//                        update.append("\n").append(query[i]);
+//                    }
+//                    selectQuery.setText(update.toString());
                 } else {
                     updateAlias();
                 }
@@ -355,6 +353,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             updateSelectionListQuery();
             updateFieldsList(true);
             updateWhere();
+            updateGroupByFields();
             updateFrom();
             if (joinPanel.isVisible()) {
                 joinPanel.getSelectedJoinOn().updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
@@ -364,6 +363,7 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             updateSelectionListQuery();
             updateFieldsList(true);
             updateWhere();
+            updateGroupByFields();
             updateFrom();
             if (joinPanel.isVisible()) {
                 joinPanel.getSelectedJoinOn().updateComboBox(clientInterface.getTableNames((String) databaseComboBox.getSelectedItem()));
@@ -422,8 +422,6 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             }
 
             aliasDict.put(joinPanel.getAlias().getText(), ((String) joinPanel.getSelectedJoinOn().getSelectedItem()));
-
-
             if (selectQuery.getText().contains("WHERE")) {
                 String[] split = selectQuery.getText().split("\nWHERE ");
                 selectQuery.setText(split[0]);
@@ -458,10 +456,18 @@ public class ClientGUISelect extends JPanel implements ActionListener {
                     fieldsList.remove(0);
                 }
             } else {
-                String[] elements = new String[fieldsList.getModel().getSize() + 1];
-                elements[0] = "*";
-                for (int i = 0; i < fieldsList.getModel().getSize(); i++) {
-                    elements[i + 1] = fieldsList.getItemAt(i);
+                String[] elements;
+                if (!fieldsList.getModel().getElementAt(0).equals("*")) {
+                    elements = new String[fieldsList.getModel().getSize() + 1];
+                    elements[0] = "*";
+                    for (int i = 0; i < fieldsList.getModel().getSize(); i++) {
+                        elements[i + 1] = fieldsList.getItemAt(i);
+                    }
+                } else {
+                    elements = new String[fieldsList.getModel().getSize()];
+                    for (int i = 0; i < fieldsList.getModel().getSize(); i++) {
+                        elements[i] = fieldsList.getItemAt(i);
+                    }
                 }
                 fieldsList.removeAllItems();
                 for (String s : elements) {
@@ -473,8 +479,9 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         } else if (e.getSource() == addGroupByButton) {
             if (!groupByPanel.isVisible()) {
                 groupByPanel.setPreferredSize(new Dimension(690, 60));
-                groupByList.setPreferredSize(new Dimension(290, 300));
+                groupByList.setPreferredSize(new Dimension(210, 40));
                 groupByPanel.setVisible(true);
+            } else {
                 updateGroupByQuery();
             }
         } else if (e.getSource() == submitButton) {
@@ -591,15 +598,15 @@ public class ClientGUISelect extends JPanel implements ActionListener {
             String[] query = selectQuery.getText().split("\nGROUP BY ");
             if (groupByList != null) {
                 StringBuilder update = new StringBuilder();
-                if (!groupByList.isSelectionEmpty()) {
-                    update.append("\nGROUP BY");
-                    for (int i : groupByList.getSelectedIndices()) {
-                        update.append(" ").append(groupByList.getModel().getElementAt(i)).append(",");
+                if (groupByList.getSelectedIndex() != -1) {
+                    // if there is already group by
+                    if (query.length >= 2) {
+                        if (!query[1].contains((CharSequence) Objects.requireNonNull(groupByList.getSelectedItem())))
+                            update.append("\nGROUP BY ").append(query[1]).append(", ").append(groupByList.getSelectedItem());
+                    } else {
+                        update.append("\nGROUP BY ").append(groupByList.getSelectedItem());
                     }
-                    update.deleteCharAt(update.length() - 1);
                     selectQuery.setText(query[0] + update);
-                } else {
-                    selectQuery.setText(query[0]);
                 }
             }
         }
@@ -640,23 +647,6 @@ public class ClientGUISelect extends JPanel implements ActionListener {
         this.repaint();
     }
 
-    public void updateWhere() {
-        conditionField.removeAllItems();
-        for (int i = 0; i < fieldsList.getModel().getSize(); i++) {
-            if (!fieldsList.getModel().getElementAt(i).equals("*"))
-                conditionField.addItem(String.valueOf(fieldsList.getModel().getElementAt(i)));
-        }
-
-        conditionField.setSelectedIndex(0);
-        conditionPane.revalidate();
-        conditionPane.repaint();
-        inputPanel.revalidate();
-        inputPanel.repaint();
-        this.revalidate();
-        this.repaint();
-        updateOperators();
-    }
-
     private void updateFrom() {
         String[] query = selectQuery.getText().split("\n");
         StringBuilder update = new StringBuilder(query[0]);
@@ -675,14 +665,30 @@ public class ClientGUISelect extends JPanel implements ActionListener {
 
     public void updateGroupByFields() {
         if (groupByList != null) {
-            groupByList.removeAll();
-            String[] s = new String[fieldsList.getModel().getSize()];
-            for (int i = 1; i < fieldsList.getModel().getSize(); i++) {
-                s[i - 1] = fieldsList.getModel().getElementAt(i);
+            groupByList.removeAllItems();
+            for (int i = 0; i < fieldsList.getModel().getSize(); i++) {
+                if (!fieldsList.getModel().getElementAt(i).equals("*"))
+                    groupByList.addItem(String.valueOf(fieldsList.getModel().getElementAt(i)));
             }
-            groupByList.setListData(s);
             groupByList.setSelectedIndex(0);
         }
+    }
+
+    public void updateWhere() {
+        conditionField.removeAllItems();
+        for (int i = 0; i < fieldsList.getModel().getSize(); i++) {
+            if (!fieldsList.getModel().getElementAt(i).equals("*"))
+                conditionField.addItem(String.valueOf(fieldsList.getModel().getElementAt(i)));
+        }
+
+        conditionField.setSelectedIndex(0);
+        conditionPane.revalidate();
+        conditionPane.repaint();
+        inputPanel.revalidate();
+        inputPanel.repaint();
+        this.revalidate();
+        this.repaint();
+        updateOperators();
     }
 
     public void showResults() {
